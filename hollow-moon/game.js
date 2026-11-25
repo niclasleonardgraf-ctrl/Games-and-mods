@@ -305,7 +305,7 @@ const SK = {
   h_five: { tree: 'hunter', n: 'Brotherhood of the Five', max: 1, req: 25, ok: () => S.origin === 'human' && S.species === 'human' && !S.transition, okD: 'Only an ordinary human can carry the mark.', d: () => `Nobody can compel you, not even an Original. The Hunter's Mark grows up your arm: +10% damage to vampires, hybrids and Originals, and 1% more for every two you kill, up to +50%. A Founder's Ring stops working for you. If you ever turn, the mark is gone.` },
 
   w_attune: { tree: 'witch', n: 'Attunement', max: 5, req: 0, d: r => `+${8 * r}% spell power, +${10 * r} focus.` },
-  w_chan: { tree: 'witch', n: 'Channeling', max: 5, req: 0, d: r => `+${12 * r}% focus recovery. On a full-moon night, and inside Coven Hollow, you draw on something larger: +${6 * r}% spell power, and focus comes back twice as fast.` },
+  w_chan: { tree: 'witch', n: 'Channeling', max: 5, req: 0, d: r => siphBorn() ? `On a full-moon night, and inside Coven Hollow, you draw on something larger: +${6 * r}% spell power. The focus recovery a witch gets from this is not for you: a siphoner makes no focus of her own.` : `+${12 * r}% focus recovery. On a full-moon night, and inside Coven Hollow, you draw on something larger: +${6 * r}% spell power, and focus comes back twice as fast.` },
   w_incend: { tree: 'witch', n: 'Incendia', max: 5, req: 0, act: 1, cd: 6, cost: { fo: 22 }, d: r => `A cone of fire 9 metres long for ${140 + 30 * r}% spell damage. Enemies burn for 4 seconds and the ground for 3.5. Fire is one of the things that ends a vampire for good.` },
   // w_aneur: fam vampire|hybrid|wolf full effect; fam original half the stun; fam human|witch|animal the lesser effect; fam spirit nothing at all (show "NO BLOOD").
   w_aneur: { tree: 'witch', n: 'Pain Infliction', max: 3, req: 3, act: 1, cd: 12, cost: { fo: 30 }, d: r => `Burst the blood vessels of everything within 10 metres. Vampires, hybrids and werewolves drop for ${2 + 0.5 * r} seconds and take ${110 + 30 * r}% spell damage; they heal, so you can do it again. Originals shake it off in half the time. The living are stunned for 1 second and take ${50 + 15 * r}%. A spirit has no blood to burst.` },
@@ -327,7 +327,7 @@ const SK = {
   //          fam original: desiccated = out of the fight (counts as defeated, not as killed by white oak; the sire line lives).
   w_desic: { tree: 'witch', n: 'Desiccation', max: 1, req: 18, act: 1, cd: 90, cost: { fo: 50, hp: 0.35 }, d: () => `Stop a vampire's heart with your hand on it. The balance is a living heart, and you pay it yourself: 35% of your health. It only takes on a vampire within 3 metres that is stunned, held in a Boundary, downed or below 35% health. An ordinary vampire or hybrid greys and never gets up. An Original lies desiccated until someone feeds him, and his line lives.` },
   // w_express: every living witch may cast with too little focus by paying 10% of max health (nosebleed); Expression makes that 5%. A siphoner with no focus cannot cast at all.
-  w_express: { tree: 'witch', n: 'Expression', max: 1, req: 25, d: () => `Magic that answers to no spirit and no balance. +30% spell power. Casting with no focus left costs 5% of your health instead of the usual 10%. Spirits' Favour stops working.` },
+  w_express: { tree: 'witch', n: 'Expression', max: 1, req: 25, d: () => siphBorn() ? `Magic that answers to no spirit and no balance. +30% spell power. Spirits' Favour stops working. The cheaper empty cast a witch gets from this is not for you: with no focus a siphoner cannot cast at all.` : `Magic that answers to no spirit and no balance. +30% spell power. Casting with no focus left costs 5% of your health instead of the usual 10%. Spirits' Favour stops working.` },
 
   l_might: { tree: 'wolf', n: 'Might', max: 5, req: 0, d: r => `+${3 * r}% health in either shape. As a person, +${4 * r}% melee damage. As a wolf, +${8 * r}% bite damage.` },
   l_regen: { tree: 'wolf', n: 'Quick Healing', max: 5, req: 0, d: r => `You heal ${(0.2 * r).toFixed(1)}% of your health every second, half as much again as a wolf. Slower than a vampire, and wolfsbane stops it.` },
@@ -376,10 +376,12 @@ const SK = {
   // o_sire: in v_compel, a compelled fam vampire|hybrid below 50% health becomes e.ally = 1 (team 0 for good, follows the player) while fewer than r allies live.
   o_sire: { tree: 'original', n: 'Sire', max: 3, req: 6, d: r => `A vampire or hybrid you compel while it is below half health is yours for good: it follows you and fights for you until it dies. You can keep ${r}.` },
 };
-/* d: shown when the tree is open. shut(): why it is closed, for this character. */
+/* d: shown when the tree is open. shut(): why it is closed, for this character.
+   The Witch tree reads differently to a born siphoner (siphBorn): she makes no focus, cannot pay for a spell out of her own health, and as a Heretic draws focus from her blood. */
+const siphBorn = () => typeof S !== 'undefined' && !!S && S.origin === 'siphoner';
 const TREES = {
   hunter: { n: 'Hunter', d: 'Stakes, vervain and nerve. Open to anyone.', shut: () => '' },
-  witch: { n: 'Witch', d: 'Spells cost focus. Cast with too little and it comes out of you instead, starting with the nose.', shut: () => S.origin === 'siphoner' ? 'You became a vampire without your siphoning. That should not be possible.' : S.origin !== 'witch' ? 'Magic is inherited. It is not in your blood.' : S.species !== 'human' ? 'A witch who becomes a vampire loses her magic for as long as she is one. Only the Cure could give it back.' : 'The craft is asleep in you. Odette Thorne could wake it.' },
+  witch: { n: 'Witch', get d() { return !siphBorn() ? 'Spells cost focus. Cast with too little and it comes out of you instead, starting with the nose.' : S.heretic ? 'Spells cost focus. You make none of your own: siphon it, or let it come slowly out of your own blood. With too little you cannot cast at all.' : 'Spells cost focus, and you make none of your own. Siphon it from something that has magic. With too little you cannot cast at all.'; }, shut: () => S.origin === 'siphoner' ? 'You became a vampire without your siphoning. That should not be possible.' : S.origin !== 'witch' ? 'Magic is inherited. It is not in your blood.' : S.species !== 'human' ? 'A witch who becomes a vampire loses her magic for as long as she is one. Only the Cure could give it back.' : 'The craft is asleep in you. Odette Thorne could wake it.' },
   wolf: { n: 'Werewolf', d: "Strength, speed and healing below a vampire's, rising with the moon and with rage. The wolf comes out on the full moon whether you like it or not. G changes your shape when you are allowed to choose.", shut: () => S.origin !== 'wolf' ? 'The curse is inherited. A bite does not pass it on.' : S.species === 'vampire' ? 'The curse sleeps on under the vampire. Only one man ever woke it after he died, and became both.' : 'The curse is asleep. It wakes with the first human life you take.' },
   vampire: { n: 'Vampire', d: 'Blood is strength. Wood, fire, vervain and the sun are the price.', shut: () => S.transition ? 'You are in transition. Nothing here is yours until you feed.' : S.flags.cured ? 'You took the Cure. You can never be turned again.' : 'Only the dead may learn this.' },
   original: { n: 'Original', d: 'The first of a line. Only white oak ends you.', shut: () => 'There were only ever a handful of these, and all of them are a thousand years old.' },
@@ -414,6 +416,7 @@ const ATK = {
   howl: { kind: 'summon', range: 30, wind: 1.1, rec: 0.5, cd: 24, n: 2 },
   /* the Council's hunters: a vervain grenade lobbed at a vampire or hybrid (never wasted on anyone else). A slam on the target's spot; resolveAtk adds the vervain and the short stun. */
   vgren: { kind: 'slam', range: 13, min: 5, r: 3.4, wind: 0.95, rec: 0.7, dmg: 0.8, cd: 11, mat: 'verv', far: 1, stun: 0.8, vs: ['vampire', 'hybrid'] },
+  wgren: { kind: 'slam', range: 13, min: 5, r: 3.4, wind: 0.95, rec: 0.7, dmg: 0.8, cd: 11, mat: 'wolfsbane', far: 1, stun: 0.8, vs: ['werewolf'] },   /* what the Council brings for a wolf the town has seen */
   /* werewolves */
   wbite: { kind: 'lunge', range: 7, min: 1.5, dist: 7, w: 1.4, wind: 0.4, rec: 0.7, dmg: 1.15, cd: 2.4, mat: 'bite', venom: 1 }, pounce: { kind: 'slam', range: 11, min: 4, r: 3, wind: 0.7, rec: 0.9, dmg: 1.4, cd: 5.5, jump: 1, mat: 'bite', venom: 1 },
   /* vampires, hybrids, Originals: speed, hands, teeth, eyes */
@@ -446,7 +449,7 @@ const EN = {
   werewolf: { n: 'Werewolf', pl: 'Werewolves', rig: 'wolf', fam: 'wolf', full: 1, venom: 1, eyes: 0xffd040, hp: 170, dmg: 23, spd: 8.2, xp: 60, poise: 80, atk: ['wbite', 'pounce', 'charge'], strafe: 1, r: 0.85, scale: 1.5, tint: { fur: 0x3c3834, furDark: 0x1c1a18 }, gold: 2 },
   packrunner: { n: 'Falls Pack Runner', rig: 'human', fam: 'wolf', onlyVs: ['vampire', 'hybrid'], eyes: 0xffd040, hp: 68, dmg: 14, spd: 5.8, xp: 22, poise: 36, atk: ['slash', 'lunge'], strafe: 1, look: { cloth: 0x5a3a2a, pants: 0x2a3040, hair: 0x2a1c12, w: 'wAxe' }, gold: 1.5 },
   hybrid: { n: 'Sired Hybrid', rig: 'human', fam: 'hybrid', hybrid: 1, venom: 1, need: 'corvinAwake', line: 'corvin', eyes: 0xffc020, hp: 110, dmg: 18, spd: 6.8, xp: 44, poise: 50, atk: ['wbite', 'claw3', 'lunge'], strafe: 1, look: { cloth: 0x2a3a2a, pants: 0x14161a, skin: 0xcabcae, hair: 0x2a1c12, coat: 1 }, gold: 2 },
-  hunter: { n: 'Council Hunter', rig: 'human', fam: 'human', onlyVs: ['vampire', 'hybrid'], verv: 1, hp: 74, dmg: 14, spd: 5, xp: 22, poise: 34, atk: ['xbolt', 'stab', 'vgren'], ranged: 1, look: { cloth: 0x4a4230, pants: 0x1c1a16, hat: 1, w: 'crossbow', armor: 1 } },
+  hunter: { n: 'Council Hunter', rig: 'human', fam: 'human', onlyVs: ['vampire', 'hybrid'], verv: 1, hp: 74, dmg: 14, spd: 5, xp: 22, poise: 34, atk: ['xbolt', 'stab', 'vgren', 'wgren'], ranged: 1, look: { cloth: 0x4a4230, pants: 0x1c1a16, hat: 1, w: 'crossbow', armor: 1 } },
   fivehunter: { n: 'Hunter of the Five', pl: 'Hunters of the Five', rig: 'human', fam: 'human', five: 1, verv: 1, onlyVs: ['vampire', 'hybrid'], hp: 140, dmg: 19, spd: 6, xp: 70, poise: 70, atk: ['xbolt', 'stab', 'lunge', 'vgren'], ranged: 1, scale: 1.06, look: { cloth: 0x2c2c2c, pants: 0x1a1a1a, hair: 0x15100e, w: 'crossbow', armor: 1 }, gold: 3 },
   /* bosses */
   warden: { n: 'The Warden', boss: 1, rig: 'human', fam: 'vampire', ring: 1, hp: 620, dmg: 20, spd: 5, xp: 400, poise: 160, scale: 1.7, atk: ['gslash', 'slam', 'charge', 'grab'], look: { cloth: 0x2a2c34, pants: 0x14161c, skin: 0x9a9690, hair: 0x101010, armor: 1, w: 'wGreat' }, r: 0.9, sub: "Sealed under Fell's Church since 1864" },
@@ -554,7 +557,8 @@ function buildGlows(a) {
   a.glows.forEach((g, i) => { M.makeScale(g[2], 1, g[2]).setPosition(g[0], 0.07 + (i % 7) * 0.002, g[1]); im.setMatrixAt(i, M); im.setColorAt(i, col.setHex(g[3])); }); im.instanceColor.needsUpdate = true; im.frustumCulled = false; a.group.add(im); a.glowMesh = im;
 }
 function lamp(x, z, c = 0xffa050, i = 1.1, d = 18, y = 3.6) { BA.lights.push({ x, y, z, c, i, d }); }
-function addInter(o) { (BA || RT.area).inter.push(o); return o; }
+/* hands: 1 marks something only hands can do (a lid, a latch, a page, a stem to pick): in wolf form it offers no prompt at all, and using it by any other road does nothing */
+function addInter(o) { if (o.hands) { const l = o.label, f = o.act; o.label = () => pl && pl.wolf ? null : l(); o.act = () => pl && pl.wolf ? undefined : f(); } (BA || RT.area).inter.push(o); return o; }
 
 /* ---------------- overworld ---------------- */
 const ROADS = [
@@ -660,7 +664,7 @@ function buildWorld() {
   const herbZone = (kind, n, x1, z1, x2, z2) => { for (let i = 0, t = 0; i < n && t < 400; t++) { const x = rr(x1, x2), z = rr(z1, z2); if (!freeSpot(x, z, 1)) continue; i++; const id = 'h' + (hid++); herbs[kind].push([x, z, rr(0, 6), 1.2, 0, id]); } };
   herbZone('vervain', 16, -280, -280, 190, -70); herbZone('vervain', 5, -100, 86, 180, 280); herbZone('wolfsbane', 10, 100, -280, 190, -120); herbZone('wolfsbane', 8, -280, 100, -90, 280); herbZone('sage', 12, -90, 120, 180, 280); herbZone('sage', 8, 70, -60, 190, 130);
   for (const kind in herbs) for (const h of herbs[kind]) { const m = place(kind, h[0], h[1], h[2], 1.25, G), id = h[5]; a.glows.push([h[0], h[1], 2.6, kind === 'vervain' ? 0x9a5cff : kind === 'wolfsbane' ? 0xffe060 : 0xd0ffe0]);
-    const it = addInter({ id, x: h[0], z: h[1], r: 2.2, m, label: () => m.visible ? 'Gather ' + CONS[kind].n : null, act: () => { m.visible = false; S.gath[id] = S.day; const n = 1 + (sk('w_herb') > 0 ? 1 : 0) + (chance(0.3) ? 1 : 0); addCons(kind, n); sfx('loot'); herbBurn(kind, n); puff(h[0], 0.6, h[1], 8, { c: GREEN, add: 0.7, sp: 1.5, up: 2, life: 0.6, size: 0.2, grav: 2 }); qEvent('gather', kind, n); } }); a.herbs = a.herbs || []; a.herbs.push(it); }
+    const it = addInter({ id, x: h[0], z: h[1], r: 2.2, hands: 1, m, label: () => m.visible ? 'Gather ' + CONS[kind].n : null, act: () => { m.visible = false; S.gath[id] = S.day; const n = 1 + (sk('w_herb') > 0 ? 1 : 0) + (chance(0.3) ? 1 : 0); addCons(kind, n); sfx('loot'); herbBurn(kind, n); puff(h[0], 0.6, h[1], 8, { c: GREEN, add: 0.7, sp: 1.5, up: 2, life: 0.6, size: 0.2, grav: 2 }); qEvent('gather', kind, n); } }); a.herbs = a.herbs || []; a.herbs.push(it); }
   // ---- wilderness ----
   const tr = { pine: [], pineTall: [], oak: [], birch: [], willow: [] }, bushes = [], rocks = [], boulders = [], stumps = [], logs = [], shrooms = [], grass = [], reeds = [];
   for (let i = 0; i < 3400; i++) { const x = rr(-WS + 6, WS - 6), z = rr(-WS + 6, WS - 6), north = z < -64 && x < 196, east = x > 212; if (!freeSpot(x, z)) continue; if (!north && !east && rnd() < 0.62) continue;
@@ -686,7 +690,7 @@ function herbBurn(kind, n) {
 }
 function mkChest(x, z, id, lvl, big) {
   const rig = mkRig('chest', {}, big ? 1.4 : 1.15); rig.g.position.set(x, 0, z); rig.g.rotation.y = (x * 13 + z * 7) % 6; shadowed(rig.g); BA.group.add(rig.g); addCirc(x, z, 0.7); BA.glows.push([x, z, 4, big ? 0xffc040 : 0xb0a060]);
-  const c = addInter({ id, x, z, r: 2.4, rig, lvl, big, open: false, label: () => c.open || !c.rig.g.visible ? null : 'Open the chest', act: () => openChest(c) }); (BA.chests = BA.chests || []).push(c); return c;
+  const c = addInter({ id, x, z, r: 2.4, hands: 1, rig, lvl, big, open: false, label: () => c.open || !c.rig.g.visible ? null : 'Open the chest', act: () => openChest(c) }); (BA.chests = BA.chests || []).push(c); return c;
 }
 function setChest(c, open) { c.open = open; const lid = c.rig.P.Lid; if (lid) lid.rotation.x = open ? 1.9 : 0; }
 function openChest(c) {
@@ -750,7 +754,7 @@ function genTomb(depth) {
         door.open = true; for (const m of slabs) G.remove(m); for (const l of [a.boxes, a.los]) { const i = l.indexOf(box); if (i >= 0) l.splice(i, 1); } hashArea(a); sfx('open'); sfx('boom'); RT.shake = Math.max(RT.shake, 0.5); ringFx(W(17), dz, 0x8a6cff, 9, 1); puff(W(17), 1.5, dz, 40, { c: ASH, add: 0.1, sp: 3, up: 2, life: 1.2, size: 0.4, grav: 2, spread: 4 }); toast('The seal knows what you carry. Stone grinds on stone, and the air that comes out is two thousand years old.'); } }); a.door = door; } }
   else { let font = depth >= 2 && rnd() < 0.55; rooms.forEach((r, i) => { if (i === 0) return; const n = Math.round(Math.min(7, 1 + Math.floor(r.w * r.h / 11) + Math.floor(depth / 6)) * (mod && mod.count || 1)); for (let k = 0; k < n; k++) { const p = rp(r, 2.5); a.spawns.push({ x: p.x, z: p.z, type: table[Math.floor(rnd() * table.length)], elite: rnd() < Math.min(0.45, 0.04 + depth * 0.012) + (mod && mod.elite || 0) }); }
       if (i > 0 && i < rooms.length - 1 && rnd() < 0.42 + (mod && mod.chest || 0)) { const p = rp(r, 2.2); mkChest(p.x, p.z, 'tc' + i, a.lvl, rnd() < 0.15 + (mod && mod.chest ? 0.2 : 0)); }
-      if (font && i >= 2 && i < rooms.length - 1) { font = false; const p = rc(r); place('fountain', p.x, p.z, 0, 0.7, G); addCirc(p.x, p.z, 1.7); a.glows.push([p.x, p.z, 9, 0xb01020]); lamp(p.x, p.z, 0xff2030, 1.2, 14, 1.5); const f = addInter({ x: p.x, z: p.z, r: 3.2, used: false, label: () => f.used ? null : 'Drink from the blood font', act: () => { f.used = true; heal(P.maxHp); if (S.origin !== 'siphoner') pl.foc = P.maxFoc; if (isVamp()) pl.blood = P.maxBlood; sfx('heal'); ringFx(p.x, p.z, 0xff2030, 5, 0.7); toast(venomed() ? 'Old blood, kept warm by something. It fills you, and it closes nothing while the venom is in you.' : isVamp() ? 'Old blood, kept warm by something. You are whole.' : 'It is only water, here. Somehow. You are whole.'); } }); } }); a.need = Math.ceil(a.spawns.length * 0.7); }
+      if (font && i >= 2 && i < rooms.length - 1) { font = false; const p = rc(r); place('fountain', p.x, p.z, 0, 0.7, G); addCirc(p.x, p.z, 1.7); a.glows.push([p.x, p.z, 9, 0xb01020]); lamp(p.x, p.z, 0xff2030, 1.2, 14, 1.5); const f = addInter({ x: p.x, z: p.z, r: 3.2, hands: 1, used: false, label: () => f.used ? null : 'Drink from the blood font', act: () => { f.used = true; heal(P.maxHp); if (S.origin !== 'siphoner') pl.foc = P.maxFoc; if (isVamp()) pl.blood = P.maxBlood; sfx('heal'); ringFx(p.x, p.z, 0xff2030, 5, 0.7); toast(venomed() ? 'Old blood, kept warm by something. It fills you, and it closes nothing while the venom is in you.' : isVamp() ? 'Old blood, kept warm by something. You are whole.' : 'It is only water, here. Somehow. You are whole.'); } }); } }); a.need = Math.ceil(a.spawns.length * 0.7); }
   a.killed = 0; a.fog = [0x05060a, 0x050a08, 0x0a0606, 0x08050a][Math.floor((depth - 1) / 5) % 4]; buildGlows(a); hashArea(a); BA = null; return a;
 }
 function disposeArea(a) { a.group.traverse(o => { if (o.isInstancedMesh) o.dispose(); }); scene.remove(a.group); }
@@ -857,6 +861,7 @@ function removeActor(a) { const i = actors.indexOf(a); if (i >= 0) actors.splice
 function neutralTo(e) {
   const ai = e.ai; if (!ai || ai.provoked || e.phantom || e.team !== 1) return false;
   if ((e.type === 'wolf' || e.type === 'packrunner' || e.type === 'werewolf') && !e.def.boss && sk('l_alpha') && isWolf()) return true;   // timber wolves and the Falls pack know an alpha
+  if (e.type === 'hunter' && S.species === 'werewolf' && (pl.wolf || S.exposure >= 50)) return false;   // the Council shoots a wolf on sight, and the person too once the town has their description
   const ov = e.def.onlyVs; if (!ov) return false; const sp = S.species;
   return !(ov.includes(sp) || (sp === 'werewolf' && ov.includes('wolf')) || (pl.wolf && (ov.includes('werewolf') || ov.includes('wolf'))) || (S.heretic && ov.includes('heretic')) || (S.original && ov.includes('original')));
 }
@@ -1125,7 +1130,7 @@ function startAtk(e, name, tgt) {
   else if (k === 'grab') c.tele = telegraph(e.x, e.z, e.rot, { kind: 'line', len: grabDist(A), w: (A.w || 1.2) * 2 }, c.wind, 0xb01030);
   else if (k === 'snap') c.tele = telegraph(e.x, e.z, e.rot, { kind: 'arc', r: (A.range || 2.6) + e.r, arc: A.arc || 1.4 }, c.wind, 0xff8a20);
   else if (k === 'gaze') { c.tele = telegraph(e.x, e.z, e.rot, { kind: 'arc', r: (A.range || 9) + e.r, arc: A.arc || 1 }, c.wind, 0xb070ff); if (tgt === pl && !e.phantom) floatText(e.x, 3.1, e.z, 'Look away', '#c090ff', 13); }
-  else if (k === 'slam') { if (!jump && !A.far) { c.tx = e.x; c.tz = e.z; } c.tele = telegraph(c.tx, c.tz, 0, { kind: 'circle', r: A.r || 3 }, c.wind, A.mat === 'verv' ? 0xb070ff : undefined); } else if (k === 'nova') c.tele = telegraph(e.x, e.z, 0, { kind: 'circle', r: 3 }, c.wind, 0xff3050);
+  else if (k === 'slam') { if (!jump && !A.far) { c.tx = e.x; c.tz = e.z; } c.tele = telegraph(c.tx, c.tz, 0, { kind: 'circle', r: A.r || 3 }, c.wind, A.mat === 'verv' ? 0xb070ff : A.mat === 'wolfsbane' ? 0xffe060 : undefined); } else if (k === 'nova') c.tele = telegraph(e.x, e.z, 0, { kind: 'circle', r: 3 }, c.wind, 0xff3050);
   else if (k === 'tk') c.tele = telegraph(c.tx, c.tz, 0, { kind: 'circle', r: A.r || 2.8 }, c.wind, 0x8a7cff); else if (k === 'boundary') c.tele = telegraph(c.tx, c.tz, 0, { kind: 'circle', r: A.r || 5 }, c.wind, 0xff5a6a);
   else if (k === 'aneurysm') c.tele = telegraph(e.x, e.z, e.rot, { kind: 'line', len: Math.min(A.range || 12, d2(e, tgt) + 1), w: 0.7 }, c.wind, 0xc090ff);
   if (k === 'summon') { sfx(e.fam === 'wolf' ? 'howl' : 'magic'); } if (k === 'blink') puff(e.x, 1.2, e.z, 18, { c: [0.1, 0.05, 0.12], add: 0.2, sp: 2, life: 0.5, size: 0.4, grav: 0 });
@@ -1137,7 +1142,7 @@ function resolveAtk(e, c) {
       for (const t of foes(e)) if (d2(e, t) < A.range + e.r + t.r && Math.abs(angd(dirTo(e, t), e.rot)) < A.arc / 2) hit(e, t, { dmg, mat, kb: 3, poise: 10, venom: ven }); break;
     case 'lunge': case 'dashchain': c.ph = 'dash'; c.t = 0; c.left = A.dist || 7; c.hitIds = {}; e.sw = { kind: e.rig.kind === 'biped' ? (bite ? 'bite' : 'stab') : 'bite', t: 0, dur: (A.dist || 7) / 28, hold: true }; sfx('blur'); return;
     case 'grab': c.ph = 'dash'; c.t = 0; c.left = grabDist(A); c.hitIds = {}; e.sw = { kind: 'bite', t: 0, dur: 0.3, hold: true }; sfx('blur'); return;
-    case 'slam': if (A.jump || name === 'pounce') { e.x = c.tx; e.z = c.tz; collide(e); } hazard(c.tx, c.tz, A.r || 3, 0, dmg, { team: e.team, src: e, mat, kb: 6, poise: 20, venom: ven, verv: mat === 'verv', onHit: t => { if (t === pl && (name === 'pounce' || A.stun)) addFx(pl, 'stun', A.stun || 0.45); } });   // mat 'verv' + stun: a hunter's vervain grenade (ATK.vgren)
+    case 'slam': if (A.jump || name === 'pounce') { e.x = c.tx; e.z = c.tz; collide(e); } hazard(c.tx, c.tz, A.r || 3, 0, dmg, { team: e.team, src: e, mat, kb: 6, poise: 20, venom: ven, verv: mat === 'verv', bane: mat === 'wolfsbane', onHit: t => { if (t === pl && (name === 'pounce' || A.stun)) addFx(pl, 'stun', A.stun || 0.45); } });   // mat 'verv' + stun: a hunter's vervain grenade (ATK.vgren); mat 'wolfsbane': the one they bring for a wolf (ATK.wgren)
       if (A.multi) for (let i = 0; i < A.multi; i++) { const t = c.tgt, a = R(0, TAU), d = i === 0 ? 0 : R(2, 7); hazard(t.x + Math.sin(a) * d, t.z + Math.cos(a) * d, A.r, 0.7 + i * 0.35, dmg, { team: e.team, src: e, mat: 'magic', pc: MAGIC, col: 0x8a5cff }); } break;
     case 'shoot': { const base = dirTo(e, c.tgt), n = A.n || 1, fire = mat === 'fire', col = A.col || (fire ? 0xff7a20 : rock ? 0x8a8478 : 0x9a6bff), hunted = A.wood && (e.def.verv || e.def.bane);
       for (let i = 0; i < n; i++) { const p = shoot(e, e.x + Math.sin(base) * 0.8, e.z + Math.cos(base) * 0.8, base + (i - (n - 1) / 2) * (A.spread || 0), { spd: A.spd || 15, dmg, mat, col, orb: A.orb != null ? !!A.orb : !(A.wood || rock), tumble: rock, r: rock ? 0.8 : 0.5, kb: rock ? 8 : 2, poise: rock ? 30 : 6, pc: A.wood || rock ? SPARK : fire ? FIRE : [((col >> 16) & 255) / 255, ((col >> 8) & 255) / 255, (col & 255) / 255],
@@ -1236,6 +1241,8 @@ function wander(e, dt, sp) { const ai = e.ai; if (ai.t <= 0 || !ai.wt) { ai.t = 
 /* ---------------- people ---------------- */
 const TOWNLOOK = { cloth: [0x8a3f3f, 0x3f6690, 0x7a7a3f, 0x86609a, 0x9a9a9a, 0x3a7a66, 0xb07840, 0x6a3555], hair: [0x1a1210, 0x4a2f1a, 0x9a7a44, 0x2a2a2a, 0x8a2f1a, 0xc0b4a0], skin: [0xd3a48a, 0xa5714e, 0xe8c2a4, 0x70492f], pants: [0x1a1c26, 0x2a2420, 0x30343c] };
 let townieN = 0;
+/* who does not run from a wolf. 1: their own kind of secret; they neither run nor tell (a witch, a wolf, the dead and the man who keeps their door). 2: Council; they stand, and they tell. */
+const WOLF_KNOWN = { odette: 1, wren: 1, ambrose: 1, gault: 1, casimir: 1, corvin: 1, hale: 2, bex: 2 };
 function spawnNpc(o) {
   const L = Object.assign({ cloth: pick(TOWNLOOK.cloth), hair: pick(TOWNLOOK.hair), skin: pick(TOWNLOOK.skin), pants: pick(TOWNLOOK.pants), long: chance(0.45) }, o.look || {}), def = { n: o.n, rig: 'human', fam: 'human', look: L, scale: o.scale || 1 }, rig = mkBody(def), n = baseActor('npc', def, rig, o.x, o.z);
   // the Council puts vervain in the town's coffee. Most people drink it; the night owls and one in five of the rest do not.
@@ -1244,9 +1251,19 @@ function spawnNpc(o) {
 }
 function updNpc(n, dt) {
   if (n.dead) return; if (n.held) { n.sp = 0; return; }
-  if ((n.wps || n.npc.townie) && !(n.fleeT > 0) && d2(n, pl) < 11 && (pl.wolf || n.fearDay === S.day)) n.fleeT = 3;      // nobody stands and talks to a wolf, or to the thing that bit them this morning
-  if (n.fleeT > 0) { n.fleeT -= dt; n.dazed = 0; const a = dirTo(pl, n); mv(n, n.x + Math.sin(a) * 5, n.z + Math.cos(a) * 5, 5.2, dt); return; }
+  /* a wolf in the street. Everyone ordinary runs from it, named or not, and anyone who gets a clear look tells the Council: the same exposure a vampire earns by being seen feeding,
+     once a night for each witness. The wolf only has to be there; whether it bites anyone is the player's doing. Sage smoke or a cloak hides it. */
+  const near = d2(n, pl) < 11, wolfNear = near && pl.wolf && !pl.dead && n.rig.g.visible && !(pl.buff.cloak > 0), who = WOLF_KNOWN[n.npc.id];
+  if (wolfNear && who !== 1 && n.sawWolf !== moonDay() && los(n, pl)) { n.sawWolf = moonDay(); const F = S.flags, first = !F.wolfSeen; F.wolfSeen = moonDay(); S.exposure = Math.min(100, S.exposure + 18); toast(first ? 'Someone saw the wolf. The Council hunts what the town has seen.' : 'Someone saw the wolf.'); }
+  if (!(n.fleeT > 0) && near && (pl.wolf ? !who : (n.wps || n.npc.townie) && n.fearDay === S.day)) n.fleeT = 3;      // nobody stands and talks to a wolf, or to the thing that bit them this morning
+  if (n.fleeT > 0) { n.fleeT -= dt; n.dazed = 0; n.away = 1; n.homeT = 0; const a = dirTo(pl, n); mv(n, n.x + Math.sin(a) * 5, n.z + Math.cos(a) * 5, 5.2, dt); return; }
   if (n.dazed > 0) { n.dazed -= dt; n.sp = 0; n.fx.stun = 0.2; return; }
+  /* someone with a place to stand walks back to it once the fright is over. If a wall is in the way they wait, and are simply there again once nobody is near enough to see. */
+  if (!n.wps && n.away) {
+    const hx = n.npc.x, hz = n.npc.z, ox = n.x, oz = n.z; if (hyp(ox - hx, oz - hz) < 0.5) { n.x = hx; n.z = hz; n.away = 0; n.homeT = 0; n.sp = 0; return; }
+    if (n.homeT > 3) { n.sp = 0; if (d2(n, pl) > 24) { n.x = hx; n.z = hz; n.away = 0; n.homeT = 0; } return; }
+    mv(n, hx, hz, 2.4, dt); if (hyp(n.x - ox, n.z - oz) < 1.2 * dt) n.homeT = (n.homeT || 0) + dt; return;
+  }
   if (!n.wps) { n.sp = 0; if (n.npc.talk && d2(n, pl) < 7 && !n.npc.still) n.rot += angd(dirTo(n, pl), n.rot) * Math.min(1, dt * 4); else if (n.npc.rot != null) n.rot = n.npc.rot; return; }
   if (n.wait > 0) { n.wait -= dt; n.sp = 0; return; }
   if (!n.tg || hyp(n.x - n.tg[0], n.z - n.tg[1]) < 1.2 || n.stuck > 2.5) { n.tg = pick(n.wps); n.wait = n.stuck > 2.5 ? 0 : R(0, 5); n.stuck = 0; return; }
@@ -1301,7 +1318,7 @@ function updSpawns(dt) {
   // anything the town has seen for what it is gets hunted: vervain, wolfsbane and wooden rounds, and now and then one of the Five
   if (S.species !== 'human' && S.exposure >= 50 && EN.hunter) { squadT -= 1.6; if (squadT <= 0 && actors.filter(e => (e.type === 'hunter' || e.type === 'fivehunter') && !e.dead && !e.phantom).length < 4) { squadT = 45; const a = R(0, TAU), five = EN.fivehunter && isVamp() && chance(0.22) && !actors.some(e => e.type === 'fivehunter' && !e.dead && !e.phantom);
       for (let k = 0; k < 2; k++) { const e = spawnEnemy(k === 0 && five ? 'fivehunter' : 'hunter', pl.x + Math.sin(a) * 42 + k * 2, pl.z + Math.cos(a) * 42, Math.max(3, S.lvl + RI(-1, 1)), { spawned: true }); collide(e); e.ai.provoked = e.ai.hunt = true; aggro(e); }
-      toast(five ? 'The Council has your description. One of the men coming is not Council: he moves like he was made for this.' : 'The Council has your description. Hunters are closing in.'); } }
+      toast(five ? 'The Council has your description. One of the men coming is not Council: he moves like he was made for this.' : S.species === 'werewolf' ? 'The Council knows there is a wolf, and whose face it wears by day. Hunters are closing in with wolfsbane.' : 'The Council has your description. Hunters are closing in.'); } }
   worldEvents();
 }
 /* Hollow Moon — the player: two bodies (your own, and the wolf), controls, melee combos, ranged, dodge, parry, abilities, feeding, the Use key, camera. */
@@ -1837,7 +1854,7 @@ function useCons(k) {
   if (!(S.cons[k] > 0) || !CONS[k] || !pl || pl.dead) return false; if (pl.wolf) { toast('Not with paws.'); return false; }
   const vamp = isVamp(), tr = S.transition, herb = 1 + 0.15 * (canMagic() ? sk('w_herb') : 0), scald = (f, line) => { pl.hp = Math.max(1, pl.hp - P.maxHp * 0.1); pl.fx[f] = Math.max(pl.fx[f] || 0, 8); sfx('hurt'); toast(line); recalc(); };
   switch (k) {
-    case 'draught': if (pl.hp >= P.maxHp || pl.healCd > 0) return false; if (vamp && pl.fx.lodged > 0) { toast('Nothing closes while the wood is still in you. Pull it out first.'); return false; } if (venomed()) { toast("Nothing heals while the venom is in you. Only Corvin's blood lifts it."); return false; } heal(P.maxHp * 0.4 * herb); pl.healCd = 6; sfx('heal'); break;
+    case 'draught': if (pl.hp >= P.maxHp || pl.healCd > 0) return false; if (vamp && pl.fx.lodged > 0) { toast('Nothing closes while the wood is still in you. Pull it out first.'); return false; } if (venomed()) { toast(S.heretic ? "Nothing heals while the venom is in you. Siphon it out of yourself, or drink Corvin's blood." : "Nothing heals while the venom is in you. Only Corvin's blood lifts it."); return false; } heal(P.maxHp * 0.4 * herb); pl.healCd = 6; sfx('heal'); break;
     case 'tonic': if (S.origin === 'siphoner') { toast('There is nothing in you for it to wake. You have to take magic from something that has it.'); return false; } if (!canMagic()) { toast(S.origin !== 'witch' ? 'It is for witches. There is no magic in you for it to wake. You keep it.' : vamp || tr ? 'There is no magic left in you for it to wake. You keep it.' : 'The craft is still asleep in you. There is nothing awake for it to feed. You keep it.'); return false; } if (pl.foc >= P.maxFoc) return false; pl.foc = Math.min(P.maxFoc, pl.foc + P.maxFoc * 0.6 * herb); sfx('heal'); break;
     case 'bloodbag':
       if (tr) { if (tr.to === 'hybrid') { sfx('bite'); toast("You drink it and nothing changes. Only the doppelgänger's blood will finish this."); break; } return askTurn(k, 'Human blood. Drink it and you are a vampire, for good: the sun, the hunger, all of it. Leave it and the day runs out, and you die the ordinary way.'); }
@@ -1897,7 +1914,7 @@ function refundTree(t) { let n = 0; for (const k in S.skills) if (!SK[k] || SK[k
    Nothing here happens to the player by accident: the curse wakes only through triggerCurse (a deliberate killing), a transition starts only after they drank the blood,
    and it completes only when they choose to feed. Letting it lapse puts the story back to the hour before they died. */
 /* a toast that follows a change after a pause. It is dropped if the story has been put back or another save loaded in the meantime (S is a new object then), or if ok() no longer holds. */
-function toastLater(ms, ok, t) { const s0 = S; setTimeout(() => { if (S === s0 && pl && (!ok || ok())) toast(t); }, ms); }
+function toastLater(ms, ok, t, o) { const s0 = S; setTimeout(() => { if (S === s0 && pl && (!ok || ok())) toast(t, o); }, ms); }   /* o: toast's options, e.g. { keep: true } for a line that says what the player has become */
 function blackout(lines, fn, hold = 2600) { if (RT.menu) closeMenu(); RT.blk = true; const b = $('black'); b.innerHTML = ''; lines.forEach(l => b.appendChild(el('p', '', l))); b.classList.add('on'); setTimeout(() => { fn && fn(); b.classList.remove('on'); RT.blk = false; }, hold + lines.length * 900); }
 function keepSnap(key) { if (saveOff) return; const j = snapshot(); (RT.snaps = RT.snaps || {})[key] = j; try { localStorage.setItem(key, j); } catch (e) { } }
 /* the saved hour under key, if it is this character's: one left behind by another character (a new game on top, a loaded save code) is not ours to go back to */
@@ -1915,7 +1932,7 @@ function rewind(key, note) {
 /* the werewolf curse: inherited, and woken by taking a human life. Called by the deliberate finishing blow, never by an accident. */
 function triggerCurse() {
   if (S.origin !== 'wolf' || S.species !== 'human' || S.transition) return false; S.species = 'werewolf'; S.flags.triggered = S.day; S.sp += 2; if (pl) pl.rage = 100; recalc(); sfx('howl'); RT.flashV = 0.3;
-  banner('The curse wakes', 'The Werewolf tree is open'); toast(`You took a life, and something in your blood has been waiting for that. ${fullTonight() ? 'The moon is full tonight.' : 'On the next full moon you will change, whether you want to or not.'}`);
+  banner('The curse wakes', 'The Werewolf tree is open'); toast(`You took a life, and something in your blood has been waiting for that. ${fullTonight() ? 'The moon is full tonight.' : 'On the next full moon you will change, whether you want to or not.'}`, { keep: true });
   toastLater(5400, isWolf, 'Two skill points. A moonlight ring, or chains in the Lockwood cellar, are the only say you get.'); diary('triggered'); codex('werewolf'); qEvent('triggered'); save(); return true;
 }
 /* dying with vampire blood in you: wake in transition, after dark, with a day to decide. to: 'vampire' | 'hybrid'. how: 'vblood' | 'hblood' | 'ambrose' | anything the story likes. */
@@ -1942,8 +1959,8 @@ function completeTransition() {
   const wasWitch = S.origin === 'witch' && !!S.flags.witch, lost = S.origin === 'witch' ? refundTree('witch') : 0; if (S.origin === 'siphoner') S.heretic = true; if (S.skills.h_five) { S.sp += S.skills.h_five; delete S.skills.h_five; } S.flags.mark = 0; S.sp += 2;
   shedVervain(); if (hyb) S.flags.shifts = 0;   // the sire bond starts now: changes made as a plain werewolf do not count against it
   recalc(); pl.hp = P.maxHp; pl.blood = Math.max(pl.blood || 0, 40); pl.dryT = 0; refreshGear(); sfx('turn'); RT.flashV = 0.35; const what = () => banner(hyb ? 'Hybrid' : S.heretic ? 'Heretic' : 'Vampire', hyb ? 'Wolf and vampire both' : 'The Vampire tree is open'); what();
-  toast(hyb ? 'It is done. You are a hybrid: the sun cannot touch you, you change when you choose, and your bite is venom. You owe Corvin for it, and you will feel that.' : 'It is done. You are a vampire. Until a witch makes you a daylight ring, the sun will kill you.');
-  if (lost || wasWitch) toastLater(5400, isVamp, 'The magic has gone out of you. It will not come back while you are a vampire.' + (lost ? ` ${lost} skill points returned.` : '')); else if (S.heretic) toastLater(5400, () => !!S.heretic, 'You still siphon. Your spells now feed on your own blood.');
+  toast(hyb ? 'It is done. You are a hybrid: the sun cannot touch you, you change when you choose, and your bite is venom. You owe Corvin for it, and you will feel that.' : 'It is done. You are a vampire. Until a witch makes you a daylight ring, the sun will kill you.', { keep: true });
+  if (lost || wasWitch) toastLater(5400, isVamp, 'The magic has gone out of you. It will not come back while you are a vampire.' + (lost ? ` ${lost} skill points returned.` : ''), { keep: true }); else if (S.heretic) toastLater(5400, () => !!S.heretic, 'You are a Heretic: a vampire who still siphons. Your spells now feed on your own blood.', { keep: true });
   toastLater(10800, () => S.species === t.to, hyb ? 'Vervain and wolfsbane both burn you now. A hundred willing changes break the sire bond.' : 'Two skill points. Sleep through the day at the boarding house, if Mrs. Pruitt asks you in.');
   diary(hyb ? 'hybrid' : 'turned'); codex(hyb ? 'hybrid' : S.heretic ? 'heretic' : 'vampire'); qEvent('turned', t.to); what();   /* the story may have started a quest in the same breath: what the player has become is shown first, and the quest's banner follows it (45-story, 'turned') */
   save(); return true;
@@ -1962,7 +1979,7 @@ function becomeOriginal() {
   if (S.original || S.flags.cured || !pl) return false; const was = S.species; S.original = true; S.transition = null; dropSnap('hollowmoon.preturn'); if (was === 'human') S.species = 'vampire'; else if (was === 'werewolf') S.species = 'hybrid';
   if (!isVamp()) { S.original = false; return false; } S.sire = null; S.unlinked = true; S.flags.lineDeathAt = 0; S.venomUntil = 0; if (!S.flags.turned) S.flags.turned = S.day; S.diet = 'human';
   if (was === 'human' || was === 'werewolf') { if (S.origin === 'witch') refundTree('witch'); if (S.origin === 'siphoner') S.heretic = true; if (S.skills.h_five) { S.sp += S.skills.h_five; delete S.skills.h_five; } S.flags.mark = 0; }
-  shedVervain(); S.sp += 2; recalc(); pl.hp = P.maxHp; pl.blood = P.maxBlood; refreshGear(); sfx('turn'); RT.flashV = 0.4; banner('Original', 'The first of a new line'); toast('Nothing but white oak can end you now. Wood, fire and a broken neck only put you down for a while. The sun and vervain still burn.'); diary('original'); codex('original'); qEvent('original'); save(); return true;
+  shedVervain(); S.sp += 2; recalc(); pl.hp = P.maxHp; pl.blood = P.maxBlood; refreshGear(); sfx('turn'); RT.flashV = 0.4; banner('Original', 'The first of a new line'); toast('Nothing but white oak can end you now. Wood, fire and a broken neck only put you down for a while. The sun and vervain still burn.', { keep: true }); diary('original'); codex('original'); qEvent('original'); save(); return true;
 }
 /* the Cure: human again for good (a hybrid goes back to the wolf it was). Whoever takes it can never be turned again. */
 function cureVampire(spend) {   // spend: take the dose out of the pack, in the same step as the change, so no save can hold one without the other
@@ -1970,7 +1987,8 @@ function cureVampire(spend) {   // spend: take the dose out of the pack, in the 
   blackout(['It tastes of nothing at all.', 'Then everything hurts, the ordinary way.', sunUp() ? 'The sun comes through the window and you let it.' : 'Tomorrow the sun will come through the window, and you will let it.'], () => {
     if (spend) S.cons.cure = Math.max(0, (S.cons.cure || 0) - 1); const wolf = S.species === 'hybrid'; S.species = wolf ? 'werewolf' : 'human'; S.heretic = false; S.original = false; S.transition = null; S.sire = null; S.unlinked = false; S.switchOff = false; S.venomUntil = 0; S.curseUntil = 0; S.diet = 'human'; S.flags.cured = 1; S.flags.lineDeathAt = 0; S.flags.guiltT = 0;
     const back = refundTree('vampire') + refundTree('original'); S.humanity = 100; S.exposure = 0; if (pl.dryT) pl.dryT = 0; recalc(); pl.hp = P.maxHp; refreshGear(); diary('cured'); codex('cure');
-    toast(`You are ${wolf ? 'a werewolf again, and only that' : 'human again'}. ${back} skill points returned. No blood will ever turn you now.`); if (canMagic()) toastLater(5400, canMagic, 'The craft has come back with your life.'); qEvent('cured'); save();
+    toast(`You are ${wolf ? 'a werewolf again, and only that' : 'human again'}. ${back} skill points returned. No blood will ever turn you now.`, { keep: true });
+    if (canMagic()) toastLater(5400, canMagic, S.origin === 'siphoner' ? 'You still siphon. Your blood no longer feeds your spells: take magic from something that has it.' : 'The craft has come back with your life.'); qEvent('cured'); save();   /* a siphoner never lost hers: only where the focus comes from changes */
   });
   return true;
 }
@@ -1981,7 +1999,7 @@ function lineDeath() { if (!lineLinked()) return false; S.flags.lineDeathAt = ab
 /* werewolf venom: slow death to a vampire, a fever to an Original, nothing to a hybrid or the living. One game day. Only the Blood of the First (or a Heretic's siphoning) lifts it. */
 function envenom(src) {
   if (!isVamp() || isHybrid() || !pl || pl.dead || S.venomUntil > absHours()) return false; S.venomUntil = absHours() + (S.original ? 4 : 24); recalc(); sfx('hurt'); floatText(pl.x, 3, pl.z, 'WEREWOLF VENOM', '#c8e060', 16);
-  toast(S.original ? 'A werewolf bite. It cannot kill you. It can give you four hours of fever.' : "A werewolf bite. It will kill you by this time tomorrow. Only Corvin's blood can stop it."); diary('venom'); codex('venom'); qEvent('venom'); return true;
+  toast(S.original ? 'A werewolf bite. It cannot kill you. It can give you four hours of fever.' : S.heretic ? "A werewolf bite. It will kill you by this time tomorrow. Siphon it out of yourself, or drink Corvin's blood." : "A werewolf bite. It will kill you by this time tomorrow. Only Corvin's blood can stop it.", { keep: true }); diary('venom'); codex('venom'); qEvent('venom'); return true;
 }
 function cureVenom(how) { if (!S.venomUntil) return false; S.venomUntil = 0; recalc(); if (how !== 'quiet') toast(how === 'siphon' ? 'You pull the venom out through your own skin, as magic. The fever breaks.' : how === 'passed' ? 'The fever breaks. The venom has run its course.' : 'The bite closes. The fever breaks.'); qEvent('venomCured'); return true; }
 /* a vampire who kills one of the Five is haunted for a day (the phantoms themselves are the spawner's: 30-actors). Safe to call twice for one kill. */
@@ -2097,7 +2115,10 @@ function sleepUntil(h) {
   if (pl.wolf) return toast('The wolf will not lie down indoors.');
   /* a vampire with no working daylight ring is not left to wake with the sun up (sunUp: 06:30 to 19:30) */
   if (isVamp() && !daylightSafe() && h >= 6.5 && h < 19.5) return say([['', 'The sun will be up when you wake, and you have nothing to keep it off you. Sleep until dusk instead?']], [['Sleep until dusk.', () => sleepUntil(20.5)], ['Stay awake.', () => { }]]);
-  if (S.species === 'werewolf' && !hasUniq('moonring') && S.clock >= 6 && S.clock < 20 && fullTonight() && (h > 20 || h <= S.clock)) return toast('The moon is full tonight. You will not sleep through it. Chain yourself in the Lockwood cellar, or be somewhere there is nobody to hurt.');
+  /* a triggered wolf is not left to sleep across a full moonrise. The next moonrise is 20:00 today, or tomorrow's if that has passed (before 06:00 the night still running is yesterday's:
+     the one to ask about is the one coming, which fullTonight() does not do until dawn). */
+  if (S.species === 'werewolf' && !hasUniq('moonring')) { const d0 = S.day, c0 = S.clock, rise = c0 < 20 ? d0 : d0 + 1, wake = c0 + ((h - c0 + 24) % 24 || 24); S.day = rise; S.clock = 21; const full = fullMoon(); S.day = d0; S.clock = c0;
+    if (full && wake > 20 + (rise - d0) * 24) return toast(`The moon is full ${rise === d0 ? 'tonight' : 'tomorrow night'}. You will not sleep through it. Chain yourself in the Lockwood cellar, or be somewhere there is nobody to hurt.`); }
   const hrs = (h - S.clock + 24) % 24 || 24, go = () => blackout([h < 12 ? 'You sleep. Morning comes.' : 'You sleep through the day.'], () => { skipTo(h); pl.hp = P.maxHp; pl.sta = P.maxSta; if (S.origin !== 'siphoner') pl.foc = P.maxFoc; if (isVamp()) pl.blood = Math.max(0, pl.blood - 8); S.exposure = Math.max(0, S.exposure - 20); enterArea('world', S.area === 'world' ? { x: pl.x, z: pl.z } : HOME); save(); toast('Rested.'); }, 900);   // you wake where you lay down: the boarding house, or Gault's cellar
   if (S.transition && absHours() + hrs >= S.transition.until) return say([['', 'If you sleep now you will not wake. The day you were given runs out before then, and you have not fed.']], [['Sleep anyway.', go], ['Stay awake.', () => { }]]);
   if (S.transition && S.transition.until - (absHours() + hrs) < 2) { const m = Math.max(1, Math.round((S.transition.until - (absHours() + hrs)) * 60)); return say([['', `If you sleep now you will wake with ${m >= 60 ? 'about an hour' : m + (m === 1 ? ' minute' : ' minutes')} left of the day you were given, and you have not fed. That is not long enough to find blood.`]], [['Sleep anyway.', go], ['Stay awake.', () => { }]]); }
@@ -2105,6 +2126,14 @@ function sleepUntil(h) {
   go();
 }
 function newDay() { S.day++; refreshWorld(); genBounties(); }
+/* what a wolf wakes to at dawn depends on where the night left them */
+function dawnLine() {
+  const F = S.flags, seen = F.wolfSeen === S.day || F.wolfSeen === S.day - 1 ? ' People saw the wolf last night.' : '', end = ', human and cold, and not sure whose blood that is.' + seen;
+  if (S.area === 'tomb') return 'Dawn, somewhere above you. You wake on the stone of the Tomb' + end;
+  if (hyp(pl.x - 159.5, pl.z + 210.8) < 12) return 'Dawn. You wake against the cellar door you did not use' + end;
+  const where = { town: 'on the cobbles, in the middle of town', cem: 'among the headstones', chapel: 'in the church ruins', farm: "in a furrow of Abel's field", bridge: 'on the boards of Wickery Bridge', manor: 'on the manor gravel', lake: 'in the reeds by the lake', quarry: 'on the quarry stone', camp: "in the dirt outside the hunters' camp" }[zoneAt(pl.x, pl.z).id];
+  return 'Dawn. You wake ' + (where || 'in the leaves') + end;
+}
 function tickClock(dt) {
   const F = S.flags; S.clock += dt / 60; S.stats.played += dt; if (S.clock >= 24) { S.clock -= 24; newDay(); toast(`Day ${S.day}. ${MOON[moonPhase()]}.`); } const now = absHours(), vamp = isVamp();
   /* blood in the system passes in a day */
@@ -2113,9 +2142,12 @@ function tickClock(dt) {
   if (S.transition && now >= S.transition.until) return void failTransition('lapsed');
   if (F.slain && F.slain.corvin && !F.lineSeen) { F.lineSeen = 1; lineDeath(); }                                          // white oak has ended Corvin (30-actors records it): his line has an hour
   if (F.lineDeathAt && now >= F.lineDeathAt) { F.lineDeathAt = 0; if (lineLinked()) return playerDeath('line'); }
-  /* the full moon takes a triggered wolf, and dawn gives them back */
-  if (moonForced()) { if (!pl.wolf) { shiftForm(true); F.moons = (F.moons || 0) + 1; sfx('howl'); toast('The moon is up. Every bone you have breaks at once, and then you are not the one deciding.'); diary('fullmoon'); codex('fullmoon'); qEvent('fullmoon'); } }
-  else if (pl.wolf && !isHybrid() && !(S.species === 'werewolf' && fullMoon() && isNight())) { shiftForm(false); if (S.species === 'werewolf') toast('Dawn. You wake in the leaves, human and cold, and not sure whose blood that is.'); }
+  /* the full moon takes a triggered wolf, and dawn gives them back. F.moonUp is the night that took them (the day it began on): a night is announced once however often the game is
+     loaded during it (pl.wolf is not saved), and it counts as a moon got through (F.moons, the 'fullmoon' event) only once it is over: at dawn, or on waking somewhere after falling in it. */
+  const nid = moonDay();
+  if (moonForced()) { if (!pl.wolf) { shiftForm(true); if (F.moonUp !== nid) { F.moonUp = nid; sfx('howl'); toast('The moon is up. Every bone you have breaks at once, and then you are not the one deciding.'); diary('fullmoon'); codex('fullmoon'); } else toast('The moon is still up.'); } }
+  else if (pl.wolf && !isHybrid() && !(S.species === 'werewolf' && fullMoon() && isNight())) { shiftForm(false); if (S.species === 'werewolf') toast(dawnLine()); }
+  if (F.moonUp && !(F.moonUp === nid && fullMoon() && isNight())) { F.moonUp = 0; F.moons = (F.moons || 0) + 1; qEvent('fullmoon'); }
   /* werewolf venom: the ceiling on your health comes down all day, and at the end of it you die. An Original only sweats it out. */
   if (S.venomUntil) { if (!vamp || isHybrid()) S.venomUntil = 0; else if (now >= S.venomUntil) { if (S.original) cureVenom('passed'); else return playerDeath('venom'); } else if (!S.original) { const cap = P.maxHp * lerp(0.9, 0.3, clamp(1 - (S.venomUntil - now) / 24, 0, 1)); if (pl.hp > cap) pl.hp = Math.max(cap, pl.hp - P.maxHp * 0.01 * dt); } }
   if (S.curseUntil && now >= S.curseUntil) { S.curseUntil = 0; toast('The dead hunter stops talking. Somewhere, someone else has taken up the mark.'); }
@@ -2208,6 +2240,7 @@ const DIARY = {
   unsired: "A hundred times I broke every bone on purpose. Somewhere past the eightieth it stopped hurting, and when it stopped hurting I stopped owing him. I thought about Corvin tonight and felt nothing pull. My hands are my own.",
   original: "The spell that made the first family, done again on me. Doppelgänger blood in wine, white oak burned to ash, the blood of the first, and then a hand through my chest because the spell needs a death. I woke as the first of a line. Nothing but white oak can end me now, and somewhere a tree has started growing, because nature always leaves a door.",
   venom: "A werewolf bit me. On a living person it is only a wound. On me it is a fever that will not break: the bite will not close, I am seeing people who are not here, and by this time tomorrow it kills me. Only Corvin's blood stops it. Everyone in this town seems to need that man alive.",
+  venomH: "A werewolf bit me. On a living person it is only a wound. On me it is a fever that will not break: the bite will not close, I am seeing people who are not here, and by this time tomorrow it kills me. For any other vampire only Corvin's blood stops it. But the venom is magic of a kind, and I take magic. I can siphon it out of myself.",
   curse: "I killed one of the Five and he has not left. He stands in doorways. He brings people with him, people I knew. All of them say the same thing: that I should walk into the sun. No witch can lift it. It ends when another hunter takes up the mark, and not before.",
   switch: "I turned it back on. Everything I did while it was off was waiting for me in a pile, and I felt all of it at once. It was easier off. That is exactly what is wrong with it.",
   murder: "I did not let go. I felt the heart stutter and I kept going, and now there is one less person in Mystic Falls and I am the reason. I am writing it down so I can never pretend I did not notice.",
@@ -2231,12 +2264,15 @@ const DIARY = {
   five: "It came up on my hand after the kill, black, like ivy. Nobody else at the camp could see it. Bex could, nearly. The Brotherhood of the Five: five hunters, made by a dying witch nine hundred years ago. Nobody can get inside my head now. And I want to kill every vampire I meet, including the ones I like.",
   mark: "The mark is finished. It runs from my hand to my collarbone and only another hunter could see it. Odette read it with her fingers, like a page. It was never a tattoo. It is a map with a spell written round it, and it ends at a door on the twentieth floor.",
   wren: "Old Wren knew my father. He ran with the Falls pack before I was born. Lockwood blood: the curse comes down the family and sleeps until the carrier takes a human life. It has been asleep in me the whole time. My temper near the full moon was never just temper. She told me where the pack chains up, in case.",
+  wrenAwake: "Old Wren knew my father. He ran with the Falls pack before I was born. Lockwood blood: the curse comes down the family and sleeps until the carrier takes a human life. Mine is awake, and she smelled it from the road. My temper near the full moon was never just temper. She told me where the pack chains up: an iron door set into a mossy bank, west of the Falls den.",
   unlinked: "Odette cut me out of Corvin's line with his own blood, and a hundred dead women holding the knife. Something that has been pulled tight in me since I turned went slack. If he dies now, I do not.",
   invited: "I stood on the porch of my own boarding house and could not put my foot over the sill. Mrs. Pruitt looked at me for a long time. Then she said, well, come in then. It only has to be said once.",
   fring: "Elspeth's box had a ring in it, heavy, with the Fell crest. Her note says a Thorne witch spelled it in 1864: if something that is not natural kills the wearer, the wearer wakes up. Only an ordinary person. And each time, it keeps a piece of your mind.",
   ambroseDead: "I finished Ambrose Varga on his own bridge. He asked for a fight and I gave him more than he asked for. He went grey like the rest of them. He was the only one of them who told me the truth before I needed it.",
 };
-function diary(k) { if (S.flags['d_' + k] || !DIARY[k]) return; S.flags['d_' + k] = 1; S.diary.push({ t: `Day ${S.day}, ${fmtClock(S.clock)}`, x: DIARY[k] }); toast('The diary has a new page.'); }
+/* a page that reads differently for what you are: a Heretic can take the venom out of herself, and a wolf who meets Wren after the curse has woken is not told that it sleeps */
+const diaryPage = k => (k === 'venom' && S.heretic && DIARY.venomH) || (k === 'wren' && (S.species === 'werewolf' || isHybrid()) && DIARY.wrenAwake) || DIARY[k];
+function diary(k) { if (S.flags['d_' + k] || !DIARY[k]) return; S.flags['d_' + k] = 1; S.diary.push({ t: `Day ${S.day}, ${fmtClock(S.clock)}`, x: diaryPage(k) }); toast('The diary has a new page.', { low: true }); }
 
 /* field notes: what the player has learned about how this town works. Every entry states a rule the game applies. codex(id) (40-systems) adds one; jot() adds several with one notice. */
 const CODEX = {
@@ -2314,7 +2350,7 @@ function odetteTalk() {
   if (qAt('q_witch', 3)) { const fin = () => qEvent('talk', 'odette');
     if (og === 'witch' && S.transition) return say([[O, 'You are in between. I do not need to touch you to feel it: you died, and it has not finished with you.'], [O, 'There is craft asleep in you, from your mother. If you feed, it dies with the rest of you. Come back to me alive and I will wake it. I will not do it while you are neither thing.']]);
     if (og === 'witch' && living) return say([[O, 'Put them in my hands. No, leave yours there.'], [O, 'There. You felt that. The candle did too.'], [O, 'Your mother was a Thorne: the side of your family the Fells never wrote down. The craft comes down the blood and nowhere else. It was asleep in you. It is not now.'], [O, 'It belongs to the living. If you ever die and get back up, it will not come with you. Remember that when somebody offers you for ever.']], null, () => { F.witch = 1; recalc(); diary('witch'); jot('witch'); addItem(genItem(Math.max(2, S.lvl), { base: 'staff', rar: 1 }), false, true); addCons('tonic', 2); toast('The Witch skill tree is open. Hold the hawthorn stick and you push with your mind instead of swinging it.'); fin(); });
-    if (og === 'siphoner') return say([[O, 'Put them in my hands. No, leave yours there.'], [O, vamp ? 'The candle went out. You are dead, and it still went out. So that is what you are.' : 'The candle did not light. It went out. And my hand has gone cold where you are holding it.'], [O, 'You took that from me. You do not make magic. You take it, from anything that has some, and you spend it until it is gone.'], [O, 'Siphoner. Your own coven will have had an uglier word. I am not going to use it. Take from the things that deserve it, and ask before you touch me again.'], [O, vamp ? 'And you kept it past dying, which no witch does. That makes you a Heretic. Your spells come out of your own blood now.' : 'One more thing. A witch who turns loses everything. Your kind would not. I am telling you because somebody will, and I would rather it was me.']], null, () => { F.siphon = 1; F.witch = 1; recalc(); diary('siphoner'); jot('siphoner', 'witch'); addItem(genItem(Math.max(2, S.lvl), { base: 'staff', rar: 1 }), false, true); toast(vamp ? 'The Witch skill tree is open. Your spells feed on your own blood.' : 'The Witch skill tree is open. You have no focus of your own: siphon it from something that has magic.'); fin(); });
+    if (og === 'siphoner') return say([[O, 'Put them in my hands. No, leave yours there.'], [O, vamp ? 'The candle went out. You are dead, and it still went out. So that is what you are.' : 'The candle did not light. It went out. And my hand has gone cold where you are holding it.'], [O, 'You took that from me. You do not make magic. You take it, from anything that has some, and you spend it until it is gone.'], [O, 'Siphoner. Your own coven will have had an uglier word. I am not going to use it. Take from the things that deserve it, and ask before you touch me again.'], [O, vamp ? 'And you kept it past dying, which no witch does. That makes you a Heretic. Your spells come out of your own blood now.' : 'One more thing. A witch who turns loses everything. Your kind would not. I am telling you because somebody will, and I would rather it was me.']], null, () => { F.siphon = 1; F.witch = 1; recalc(); diary('siphoner'); jot('siphoner', 'witch'); addItem(genItem(Math.max(2, S.lvl), { base: 'staff', rar: 1 }), false, true); toast(vamp ? 'You have a name for what you are now: Heretic. Odette gave you a hawthorn stick. Your spells feed on your own blood.' : 'You have a name for what you are now: siphoner. Odette gave you a hawthorn stick. You still have no focus of your own: siphon it from something that has magic.', { keep: true }); fin(); });
     if (og === 'witch') return say([[O, 'Look at your hands. You picked vervain dead. That was stubbornness, not blood.'], [O, "You had the craft in you, asleep. A Thorne on your mother's side. It went out when your heart did. A witch who turns loses her magic, and nothing I know of gives it back."], [O, 'I am sorry. I would have liked to teach you. Take this for the herbs.']], null, () => { F.herbsPaid = 1; S.gold += 60; addCons('draught', 2); jot('witch'); fin(); });
     return say([[O, vamp ? 'Look at your hands. You picked vervain dead. That was stubbornness.' : isWolf() ? 'You picked wolfsbane and your fingers are blistered. So now I know what you are. I will not say it in the street.' : 'They came up clean. Good.'], [O, 'This was an errand, not a test. Magic is inherited, like a jaw. It is in the blood or it is not, and it is not in yours. No book and no wanting will change that.'], [O, og === 'wolf' ? 'What is in your blood is older than this town and nothing to do with me. Old Wren, out at Dunham Lake, is the one to ask.' : 'That does not make you helpless. Vervain on a blade, wolfsbane on a blade, sage smoke when you need not to be found. I sell all three.'], [O, 'Here. Fair pay.']], null, () => { F.herbsPaid = 1; S.gold += 60; addCons('draught', 2); diary('herbs'); jot('witch'); fin(); }); }
   if (qAt('q_daylight', 0)) return say([[O, 'So. You died, and you fed. I do not need to touch you to feel it.'], [O, 'I can bind the sun into lapis lazuli. One stone, one vampire: it will work for you and nobody else, and only while it is on your hand.'], [O, "A few of the ones sealed under Fell's Church in 1864 had a witch's favour and went down wearing lapis. The Warden still wears his. The chests down there sometimes hold a stone."], [O, S.humanity < 50 ? 'I can hear what you have done already. I made no promise to like you. Bring me a stone and we will see.' : 'Bring me a stone. And understand me: what I make, I can unmake.']], null, () => { jot('sun'); qEvent('talk', 'odette'); });
@@ -2399,7 +2435,7 @@ function wrenTalk() {
   if (qAt('q_wren', 1)) return say(F.packAlpha ? [[W, 'It is done. I heard the pack go quiet, and then I heard them howl for somebody else.'], [W, 'They are yours to answer for now. That is all an alpha is: the one who answers. See that every one of them has a chain and uses it.']] : [[W, 'It is done. I felt the pack go quiet. They will choose another, and I will see that this one keeps a chain.'], [W, 'Take this. It is not what I would give a wolf, but you are not one.']], null, () => { if (!F.packAlpha) addItem(genItem(S.lvl + 1, { slot: 'amulet', rar: 3 }), false, true); qEvent('talk', 'wren'); });
   if (qAt('q_moonring', 1)) return say([[W, 'One moon. You have the look now. Everyone does after the first.'], [W, 'This is black kyanite, from the same seam as the one on my hand. A stone is only a stone. Take it to Odette Thorne. A witch has to spell it, and she is the only one in the county I would let near it.']], null, () => { addCons('kyanite', 1); qEvent('talk', 'wren'); });
   if (og === 'wolf' && !F.wrenTold) return say([[W, 'Sit by the fire. Let me look at you.'], [W, 'I knew your father. He ran with the Falls pack before you were born. He was a Lockwood, whatever name they put on your papers.'], [W, 'It comes down the blood. Not from a bite: that is a story. You are born carrying it, and it sleeps. It wakes the first time you take a human life, meant or not, and it never sleeps again.'],
-    [W, were || hyb ? 'And yours is awake. I could smell it from the road.' : vamp ? 'Yours never woke. You died first, and it sleeps on under the dead thing you are. Only one man ever woke it after he died, and became both. I am sorry for you, and a little relieved.' : 'Yours is asleep. That temper of yours, worse near the full moon: that is it turning over. Kill nobody and it stays asleep your whole life. Plenty of us have managed.'], [W, 'If it ever wakes, there is a low stone house west of the Falls den with our name over the door. Steps go down inside, and there are chains in the wall. Lockwoods have locked themselves in there for two hundred years. Before moonrise. Remember where I said.']], null, () => { F.wrenTold = 1; diary('wren'); jot('werewolf', 'fullmoon', 'cellar'); });
+    [W, were || hyb ? 'And yours is awake. I could smell it from the road.' : vamp ? 'Yours never woke. You died first, and it sleeps on under the dead thing you are. Only one man ever woke it after he died, and became both. I am sorry for you, and a little relieved.' : 'Yours is asleep. That temper of yours, worse near the full moon: that is it turning over. Kill nobody and it stays asleep your whole life. Plenty of us have managed.'], [W, hyb ? 'And there is a dead thing in you besides, so the moon cannot force you. You change when you choose. The rest of us go behind an iron door set into a mossy bank, west of the Falls den, with our name cut over it. Steps go down behind it, and there are chains in the wall. Lockwoods have locked themselves in there for two hundred years.' : were ? 'So listen. West of the Falls den there is an iron door set into a mossy bank, with our name cut over it. Steps go down behind it, and there are chains in the wall. Lockwoods have locked themselves in there for two hundred years. On the day of the full moon, be behind that door before moonrise. Remember where I said.' : 'If it ever wakes, there is an iron door set into a mossy bank west of the Falls den, with our name cut over it. Steps go down behind it, and there are chains in the wall. Lockwoods have locked themselves in there for two hundred years. Before moonrise. Remember where I said.']], null, () => { F.wrenTold = 1; diary('wren'); jot('werewolf', 'fullmoon', 'cellar'); });
   const opts = [];
   if (!S.quests.q_wren && !S.done.q_wren && !F.alphaDead) opts.push(['"What is wrong at the Falls?"', wrenAlpha]);
   if (were && !S.quests.q_moonring && !S.done.q_moonring) opts.push(['"How do you stand it, every month?"', () => say([[W, 'I do not. Look at my hand. Black kyanite, spelled by a witch a long time ago. A moonlight ring.'], [W, 'With it the moon cannot force me. I turn if I choose, and if I do not, I keep the strength standing up. Wolfsbane still burns. It is not a cure.'], [W, 'I have one more stone. I will not give it to someone who has not been through a full moon and counted the cost. Chain up in the cellar, or run loose and live with it. Then come back.']], null, () => { jot('moonring'); startQuest('q_moonring'); })]);
@@ -2518,6 +2554,7 @@ function originalRitual() {
 }
 function callHundred() { if (actors.some(e => e.type === 'matriarch' && !e.dead)) return; sfx('howl'); RT.flashV = 0.2; toast('A hundred voices answer at once, and they are one voice.'); const e = spawnEnemy('matriarch', -20, -238, Math.max(12, S.lvl)); aggro(e); }
 function hollowAltar() {
+  if (pl.wolf) return;   /* the altar, the notice board, the bridge sign and your own room want hands: none of them is offered to a wolf */
   const F = S.flags, vamp = isVamp(), night = isNight(), witch = canMagic() && !vamp, peace = !!F.matriarch, opts = [];
   if (qAt('q_original', 3)) opts.push(['Begin the spell that made the first family.', originalRitual]);
   if (witch && !(F.hundredT > absHours())) opts.push(['Channel the Hundred.', () => { channelHundred(); }]);
@@ -2533,6 +2570,7 @@ function lockwoodCellar() {
   say([[head, 'Steps down under the Lockwood lintel. Chains bolted into the stone, and a door scored from the inside. Lock yourself in before moonrise and the wolf spends the night behind it.'], ['', ring ? 'The ring keeps the moon off you. You do not need the chains while you wear it.' : tonight ? 'The moon is full tonight. Lock the chains now and you wake here at dawn, and nobody is hurt.' : 'The moon is not full tonight. Come back on the day it is, before dark.']], tonight && !ring ? [['Lock the chains.', () => chainUp()], ['Not yet.', () => { }]] : null);
 }
 function bridgeSign() {
+  if (pl.wolf) return;
   const A = 'Ambrose', F = S.flags, want = oakWanted();
   if (!want) return say([['The old sign', 'WICKERY BRIDGE · 1912. The paint has gone. The wood has not: a hundred years in the weather and not a soft spot in it.']]);
   const take = () => { const beam = !!F.signTaken; addCons('oakwood', 1); F.signTaken = 1; storySync(); sfx('open'); jot('whiteoak'); toast(beam ? 'A beam of the old bridge, black from the river and sound all the way through.' : 'The sign comes away from the rail in one piece. It is heavier than it looks.'); checkHave(); };
@@ -2541,10 +2579,11 @@ function bridgeSign() {
   take();
 }
 function elspethBox() {
-  if (!roomFor()) return; S.flags.box = 1;
+  if (pl.wolf || !roomFor()) return; S.flags.box = 1;
   say([['', "Letters, mostly, in your aunt's square hand. Forty years of Council minutes that say 'animal attack' and mean something else."], ['', 'Under them, a heavy ring with the Fell crest, and a note.'], ['Elspeth', 'Spelled by a Thorne in 1864. If something unnatural kills you while you wear it, you wake up. It only works on plain people, which is what most of us are. It takes a little each time. Do not lean on it.']], null, () => { addItem(mkUniq('fring', S.lvl)); diary('fring'); jot('fring', 'council'); });
 }
 function yourRoom() {
+  if (pl.wolf) return;
   if (isVamp() && !S.flags.invited) return toast("Your foot will not cross the sill. This is Mrs. Pruitt's house, and she has not asked you in.");
   const opts = [['Sleep until morning.', () => sleepUntil(8)], ['Sleep until dusk.', () => sleepUntil(20.5)]]; if (!S.flags.box) opts.push(["Open Elspeth's box.", elspethBox]); opts.push(['Not now.', () => { }]);
   say([['Your room', "Elspeth's bed, Elspeth's lamp, Elspeth's box on the dresser. The window faces east."]], opts);
@@ -2641,7 +2680,7 @@ const QUESTS = {
   q_quarry: { n: 'The Nest', steps: [{ t: 'kill', type: 'lenore', d: 'After dark, kill the matron of the Blackridge Quarry nest. Finish her when she drops, or she gets up.' }, { t: 'talk', id: 'hale', d: 'Report to Captain Hale.' }], rew: { xp: 1200, gold: 500, sp: 1, item: () => mkUniq('halebow', S.lvl) } },
   q_hollow: { n: 'A Hundred Voices', steps: [{ t: 'kill', type: 'matriarch', zone: 'hollow', d: 'After dark, lay a hand on the altar at Coven Hollow, call out the one voice, and break it.', on() { if (S.flags.matriarch) advQuest('q_hollow'); } }, { t: 'talk', id: 'odette', d: 'Tell Odette the Hollow is quiet.', on() { diary('matriarch'); } }], rew: { xp: 1400, sp: 2 } },
   q_unlink: { n: 'One Thread', steps: [{ t: 'have', item: 'hblood', d: 'Bring Odette a vial of the Blood of the First. It can only be taken while Corvin lives: put him on the floor and take it, or bargain for it.' }, { t: 'talk', id: 'odette', d: "Give the vial to Odette Thorne. She will cut you out of Corvin's line." }], rew: { xp: 800 } },
-  q_moonring: { n: 'Black Kyanite', steps: [{ t: 'flag', id: 'moon', d: 'Get through one full moon: chained in the Lockwood cellar, in the stone house west of the Falls den, or loose.', on() { if (S.flags.moons > 0) advQuest('q_moonring'); } }, { t: 'talk', id: 'wren', d: 'Go back to Old Wren at Dunham Lake.' }, { t: 'talk', id: 'odette', d: 'Take the kyanite to Odette Thorne. A witch has to spell it.' }], rew: { xp: 600 } },
+  q_moonring: { n: 'Black Kyanite', steps: [{ t: 'flag', id: 'moon', d: 'Get through one full moon: chained in the Lockwood cellar, behind the iron door west of the Falls den, or loose.', on() { if (S.flags.moons > 0) advQuest('q_moonring'); } }, { t: 'talk', id: 'wren', d: 'Go back to Old Wren at Dunham Lake.' }, { t: 'talk', id: 'odette', d: 'Take the kyanite to Odette Thorne. A witch has to spell it.' }], rew: { xp: 600 } },
   q_hybrid: { n: 'Neither Moon Nor Sun', steps: [{ t: 'flag', id: 'hb', d: 'Get the Blood of the First. Corvin has to be alive: take it while he is down, or strike a bargain with him.', on() { if (hasCons('hblood') || S.flags.hblood) advQuest('q_hybrid'); } },
     { t: 'talk', id: 'elise', d: 'Ask Elise Gilroy, by the gazebo, for her blood. It only works while she is human, and only she can give it.', on() { if (hasCons('dblood')) advQuest('q_hybrid'); } },
     { t: 'flag', id: 'hybrid', d: "If you want this: drink Corvin's blood, then die within the day. You wake in transition and must drink Elise's blood before the next night, or you bleed from the eyes and die. Only the Cure undoes it." },
@@ -2737,18 +2776,51 @@ function spawnWorldNpcs() {
   /* story props, built once: the old bridge sign, and the door of the Lockwood cellar, set into a bank west of the Falls den */
   if (!a.storyProps) { a.storyProps = { sign: place('board', 193.2, -36.2, 0, 0.5), cellar: place('cellar', 159.5, -214, 0, 0.8), torch: place('torch', 162.6, -211, 0, 1) }; if (a.boxes && a.los && a.hash && typeof hashArea === 'function') { for (const box of [[157.4, -218, 161.6, -213.1], [157.7, -213.1, 158.5, -210.9], [160.5, -213.1, 161.3, -210.9]]) { a.boxes.push(box); a.los.push(box); } hashArea(a); } }
   storySync();
-  addInter({ temp: 1, x: -20, z: -245, r: 2.8, label: () => 'Touch the altar', act: hollowAltar });
-  addInter({ temp: 1, x: 8.5, z: -29.2, r: 2.4, label: () => S.done.q_bump ? 'Read the notice board' : null, act: () => openMenu('bounty') });
-  addInter({ temp: 1, x: -38.4, z: -8, r: 2.4, label: () => isVamp() && !S.flags.invited ? 'Your room (you have not been asked in)' : 'Your room: rest', act: yourRoom });
-  addInter({ temp: 1, id: 'oakwood', x: 193, z: -37, r: 2.8, label: () => oakWanted() ? (S.flags.signTaken ? 'Pull a beam of the old bridge out of the bank' : 'Pry the old sign off Wickery Bridge') : S.flags.signTaken ? null : 'Read the old bridge sign', act: bridgeSign });
+  addInter({ temp: 1, x: -20, z: -245, r: 2.8, label: () => pl.wolf ? null : 'Touch the altar', act: hollowAltar });
+  addInter({ temp: 1, x: 8.5, z: -29.2, r: 2.4, label: () => S.done.q_bump && !pl.wolf ? 'Read the notice board' : null, act: () => { if (!pl.wolf) openMenu('bounty'); } });
+  addInter({ temp: 1, x: -38.4, z: -8, r: 2.4, label: () => pl.wolf ? null : isVamp() && !S.flags.invited ? 'Your room (you have not been asked in)' : 'Your room: rest', act: yourRoom });
+  addInter({ temp: 1, id: 'oakwood', x: 193, z: -37, r: 2.8, label: () => pl.wolf ? null : oakWanted() ? (S.flags.signTaken ? 'Pull a beam of the old bridge out of the bank' : 'Pry the old sign off Wickery Bridge') : S.flags.signTaken ? null : 'Read the old bridge sign', act: bridgeSign });
   addInter({ temp: 1, id: 'cellar', x: 159.5, z: -210.8, r: 3, label: () => pl.wolf && !isHybrid() ? null : S.species === 'werewolf' && !hasUniq('moonring') && fullTonight() ? 'Chain yourself in the Lockwood cellar' : 'The Lockwood cellar', act: lockwoodCellar });
 }
 /* Hollow Moon — interface: HUD, minimap, dialogue, the Use prompt, menus, codex, vendors, touch controls. */
 const GLYPH = { h_gren: '✺', h_wgren: '✽', h_heart: '➹', h_whirl: '⟳', h_volley: '⋙', h_device: '⊚', w_incend: '♨', w_aneur: '✹', w_ward: '◈', w_cloak: '◌', w_motus: '⇗', w_bound: '◯', w_siphon: '⊛', w_desic: '⊘', l_rage: '✸', l_pounce: '↷', l_howl: '≋', v_frenzy: '♥', v_compel: '◉', v_step: '⤳', v_ripper: '◐', v_snap: '✕', v_heart: '❥' };
 const glyph = id => GLYPH[id] || (SK[id] ? SK[id].n.charAt(0) : '?');
-function toast(t) { const box = $('toasts'); if (box.lastChild && box.lastChild.textContent === t) return; const d = el('div', '', t); box.appendChild(d); while (box.children.length > 3) box.firstChild.remove(); setTimeout(() => d.remove(), 5200); }
+/* Notes at the top of the screen: toast(text, opts). Three show at once and the rest wait in a line, so nothing raised in a busy moment is lost.
+   opts.keep (or a plain true): the note says what has just happened to the player. It goes first, stays longer, and sends a small notice back into the line when the stack is full.
+   Small notices are the diary and codex lines (or opts.low): they go last, and codex notices raised together become one line.
+   A note is never drawn over a banner. Notes that would be are held until the banner has gone. */
+const TOASTQ = [], TOAST_ON = 3, TOAST_QMAX = 9;
+function toast(t, opts) {
+  if (t == null || t === '') return; t = String(t); const box = $('toasts'), now = performance.now(), keep = opts === true || !!(opts && opts.keep), cdx = !keep && t.startsWith('Codex: '), low = !keep && (cdx || !!(opts && opts.low) || t === 'The diary has a new page.');
+  for (const d of box.children) if (d.textContent === t && now - d._t0 < d._ms * 0.8) return;                                  /* that is on the screen already */
+  const same = TOASTQ.indexOf(TOASTQ.find(e => e.t === t)); if (same >= 0) { if (!keep || TOASTQ[same].keep) return; TOASTQ.splice(same, 1); }   /* and that is already waiting (a note that now matters moves up) */
+  if (cdx) { const join = (base, set) => { const have = base.slice(7).split(' · '), more = t.slice(7).split(' · ').filter(x => !have.includes(x)), m = more.length ? base + ' · ' + more.join(' · ') : base; if (m.length > 84) return false; set(m); return true; };
+    const up = [...box.children].find(d => d._e.cdx && now - d._t0 < 1200); if (up && join(up.textContent, m => { up.textContent = up._e.t = m; })) return toastSettle();
+    const w = TOASTQ.find(e => e.cdx); if (w && join(w.t, m => { w.t = m; })) return; }
+  let i = TOASTQ.length; if (keep) { i = 0; while (i < TOASTQ.length && TOASTQ[i].keep) i++; } else if (!low) while (i > 0 && TOASTQ[i - 1].low) i--;
+  TOASTQ.splice(i, 0, { t, keep, low, cdx });
+  while (TOASTQ.length > TOAST_QMAX) { let j = TOASTQ.findIndex(e => e.low); if (j < 0) j = TOASTQ.findIndex(e => !e.keep); TOASTQ.splice(Math.max(j, 0), 1); }   /* the line is only so long: small notices are the first to go */
+  toastPump();
+}
+/* is the stack clear of a banner that is up, and (when it holds more than one note) of the middle of the screen, where the player stands */
+function toastFits() { const box = $('toasts'), r = box.getBoundingClientRect(), b = $('banner'); if (!r.height) return true;
+  if (!b.hidden) { const rb = b.getBoundingClientRect(); if (rb.height && r.bottom > rb.top - 6 && r.top < rb.bottom + 6) return false; }
+  return box.children.length < 2 || r.bottom <= innerHeight * 0.52; }
+/* take a note off the screen. back: it goes to the front of its own part of the line, to be shown again (a small notice that has had its time is simply dropped) */
+function toastOff(d, back) { clearTimeout(d._tm); d.remove(); const e = d._e; if (!back || (e.low && performance.now() - d._t0 > 2500)) return; let i = 0; if (!e.keep) while (i < TOASTQ.length && (TOASTQ[i].keep || (e.low && !TOASTQ[i].low))) i++; TOASTQ.splice(i, 0, e); }
+/* a banner has come up, or a note has grown: whatever no longer fits steps back into the line, from the bottom of the stack */
+function toastSettle() { const box = $('toasts'); while (box.lastChild && !toastFits()) toastOff(box.lastChild, true); }
+/* show whatever is waiting, for as long as there is room */
+function toastPump() { const box = $('toasts');
+  while (TOASTQ.length) { const e = TOASTQ[0], kids = [...box.children];
+    if (kids.length >= TOAST_ON) { const y = e.keep && (kids.reverse().find(d => d._e.low) || kids.find(d => !d._e.keep)); if (!y) break; toastOff(y, true); }   /* a full stack makes room for a note that matters: the newest small notice steps back, or failing that the newest ordinary one */
+    const d = el('div', e.keep ? 'keep' : '', e.t), ms = e.keep ? 8400 : e.low ? 4200 : 5200; d._e = e; d._t0 = performance.now(); d._ms = ms; d.style.animationDuration = ms + 'ms';
+    box.insertBefore(d, e.keep ? [...box.children].find(x => !x._e.keep) || null : null);
+    if (e.keep) while (box.lastChild !== d && !box.lastChild._e.keep && !toastFits()) toastOff(box.lastChild, true);                                      /* and it takes the room it needs from the notes under it */
+    if (!toastFits()) { d.remove(); break; }
+    TOASTQ.shift(); d._tm = setTimeout(() => { d.remove(); toastPump(); }, ms); } }
 function lootToast(t, col) { const box = $('loot'), d = el('div', '', t); d.style.color = col; box.appendChild(d); while (box.children.length > 5) box.firstChild.remove(); setTimeout(() => d.remove(), 4200); }
-let bannerT = 0; function banner(t, s) { $('bannerT').textContent = t; $('bannerS').textContent = s || ''; const b = $('banner'); b.hidden = false; b.classList.remove('go'); void b.offsetWidth; b.classList.add('go'); clearTimeout(bannerT); bannerT = setTimeout(() => b.hidden = true, 3600); }
+let bannerT = 0; function banner(t, s) { $('bannerT').textContent = t; $('bannerS').textContent = s || ''; const b = $('banner'); b.hidden = false; b.classList.remove('go'); void b.offsetWidth; b.classList.add('go'); toastSettle(); clearTimeout(bannerT); bannerT = setTimeout(() => { b.hidden = true; toastPump(); }, 3600); }
 function zoneBanner(z) { $('zone').textContent = z.n + (z.safe ? '' : ' · Lv ' + z.lvl); if (!z.safe && z.id !== 'wild') banner(z.n, 'Enemy level ' + z.lvl + '+'); }
 function showBoss(e) { $('bossbar').hidden = false; $('bossname').textContent = e.name; $('bosssub').textContent = e.def.sub || ''; } function hideBoss() { $('bossbar').hidden = true; }
 /* what a character is, in a word or two. Works on the live save and on one read back from storage (the Continue button). */
@@ -2806,7 +2878,7 @@ function hudStatus() {
   if (typeof sysStatus === 'function') { for (const l of sysStatus()) if (l.indexOf('In transition') !== 0) st.push(l === 'Wolf' ? 'Wolf form' : l); }   // everything 40-systems keeps a clock on; the transition has a line of its own
   else { if (S.venomUntil > now) st.push((S.original ? 'Venom fever ' : 'Werewolf venom ') + hrs(S.venomUntil)); if (S.curseUntil > now) st.push("Hunter's Curse " + hrs(S.curseUntil)); if (f.lodged > 0) st.push('Wood lodged'); if (f.wolfsbane > 0) st.push('Wolfsbane'); if (pl.wolf) st.push('Wolf form');
     if (P.desic) st.push(['', 'Starving', 'Weakening', 'Desiccating'][P.desic] || 'Desiccating'); else if (vamp && pl.blood <= 0) st.push('Starving'); if (S.switchOff) st.push('Humanity off'); if (vamp && S.diet === 'animal') st.push('Animal blood'); if (F.vblood) st.push('Vampire blood in you'); if (F.hblood) st.push('Blood of the First in you'); }
-  if (vamp) { if (S.exposure >= 50) st.push('Hunted'); else if (S.exposure >= 20) st.push('Suspected'); }
+  if (vamp || S.species !== 'human') { if (S.exposure >= 50) st.push('Hunted'); else if (S.exposure >= 20) st.push('Suspected'); }
   if (b.coatV > 0) st.push('Vervain blade ' + Math.ceil(b.coatV) + 's'); if (b.coatW > 0) st.push('Wolfsbane blade ' + Math.ceil(b.coatW) + 's'); if (b.ward > 0) st.push('Ward ' + Math.round(b.ward)); if (b.cloak > 0) st.push('Cloaked ' + Math.ceil(b.cloak) + 's'); if (b.fury > 0) st.push('Fury ' + Math.ceil(b.fury) + 's');
   if (b.slayerN) st.push('Momentum ×' + b.slayerN); if (b.riposte > 0) st.push('Riposte'); if (b.burger > 0 && !vamp) st.push('Fed');
   return st;
@@ -3056,6 +3128,7 @@ function begin(fresh, data) {
   audioInit(); if (fresh) { newGame(curLook(), originSel); if (typeof dropSnap === 'function') { dropSnap('hollowmoon.preturn'); dropSnap('hollowmoon.preboss'); } } else if (applySave(data) === false) { $('continue').hidden = true; return; }
   mkPlayer(S.pos.x, S.pos.z); if (fresh) pl.hp = P.maxHp;   /* a new character starts at full health, whatever the starting coat adds to the maximum */
   const inTomb = S.area === 'tomb'; enterArea('world', inTomb ? { x: -130, z: -164 } : { x: S.pos.x, z: S.pos.z });
+  TOASTQ.length = 0;   /* notes still waiting from another life are not this one's */
   RT.started = true; $('title').hidden = true; $('hud').hidden = false; genBounties();
   if (fresh) { startQuest('q_arrive'); diary('arrive'); say([['', 'The bus lets you off on Main Street at half past four and does not wait.'], ['', ARRIVE[S.origin] || ARRIVE.human]], null, () => { toast(RT.touch ? 'Left thumb moves. ATTACK strikes; hold it for a heavy blow.' : 'WASD to move. Left mouse attacks; hold it for a heavy blow.'); setTimeout(() => toast(RT.touch ? 'DODGE rolls through attacks. Hold BLOCK, or tap it just in time to parry.' : 'Space dodges. Right mouse blocks; tap it just in time to parry.'), 5400); setTimeout(() => toast(RT.touch ? 'USE talks and opens. MENU, top right, opens your pack, skills, codex and map.' : 'E talks and opens. Tab opens your pack, skills, codex and map.'), 10800);
       setTimeout(() => toast(RT.touch ? 'The ✚ button drinks a healing draught. SHOOT fires once you carry something to shoot with.' : 'R drinks a healing draught. F shoots once you carry something to shoot with.'), 16200); }); }
@@ -3087,7 +3160,8 @@ try { if (window.claude && window.claude.hot && window.claude.hot.snapshot) wind
 /* debug and test handle. The species calls are wrapped so that a missing one fails when it is called, not when the page loads. */
 window.HM = { get S() { return S; }, get pl() { return pl; }, get P() { return P; }, get RT() { return RT; }, actors, press, K, spawnEnemy, enterArea, genItem, addItem, gainXp, startQuest, qEvent, mkUniq, recalc, save, hit, drops, get area() { return RT.area; }, get info() { return ren.info.render; }, get cam() { return cam; }, get scene() { return scene; },
   get dq() { return dq; }, get prompt() { return curInt; }, get origin() { return S.origin; }, get species() { return S.species; }, get kind() { return kindName(); }, get wolf() { return !!(pl && pl.wolf); }, get status() { return pl ? hudStatus() : []; }, get originSel() { return originSel; }, set originSel(v) { if (ORIGINS[v]) { originSel = v; originCards(); } },
-  begin: (fresh, data) => begin(fresh, data), newGame: (look, origin) => newGame(look, origin), findInteract: () => findInteract(), openMenu: t => openMenu(t), closeMenu: () => closeMenu(), say: (l, c, d) => say(l, c, d),
+  toast: (t, o) => toast(t, o), banner: (t, s) => banner(t, s), get toastsWaiting() { return TOASTQ.map(e => e.t); },
+  begin: (fresh, data) => begin(fresh, data),newGame: (look, origin) => newGame(look, origin), findInteract: () => findInteract(), openMenu: t => openMenu(t), closeMenu: () => closeMenu(), say: (l, c, d) => say(l, c, d),
   setForm: (wolf, willing) => setForm(wolf, willing), toggleShift: () => toggleShift(), canShift: () => canShift(), triggerCurse: () => triggerCurse(), beginTransition: (to, how) => beginTransition(to, how), completeTransition: () => completeTransition(), failTransition: why => failTransition(why),
   becomeOriginal: () => becomeOriginal(), cureVampire: () => cureVampire(), unlinkSire: () => unlinkSire(), envenom: src => envenom(src), cureVenom: how => cureVenom(how), hunterCurse: () => hunterCurse(), despellRing: on => despellRing(on), playerDeath: (src, o) => playerDeath(src, o), respawn: () => respawn(),
   isVamp: () => isVamp(), isWolf: () => isWolf(), isHybrid: () => isHybrid(), inTransition: () => inTransition(), canMagic: () => canMagic(), treeOpen: t => treeOpen(t), treePts: t => treePts(t), sk: id => sk(id), hasUniq: k => hasUniq(k), daylightSafe: () => daylightSafe(), immuneCompel: o => immuneCompel(o), moonPower: () => moonPower(), absHours: () => absHours(),
