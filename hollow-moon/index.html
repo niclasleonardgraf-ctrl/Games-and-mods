@@ -1,0 +1,161 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Hollow Moon</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Barlow+Condensed:wght@500;600&display=swap">
+<style>
+/* Layout: full-bleed 3D stage; HUD pinned to the four corners; diary and dialogue as paper cards over the night. */
+:root{
+  color-scheme:dark;
+  --ink:#080b12; --night:#101827; --bone:#e9e0cf; --ash:#9a958a; --blood:#b3122a; --blood-hi:#e2334a;
+  --lapis:#4f7df0; --vervain:#a678e2; --candle:#e6b86c; --paper:#ddd0b3; --paper-ink:#2a1d14;
+  --display:"IM Fell English","Iowan Old Style",Georgia,serif;
+  --ui:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --gl:max(16px,env(safe-area-inset-left,0px)); --gr:max(16px,env(safe-area-inset-right,0px));
+  --gt:calc(env(safe-area-inset-top,0px) + 12px); --gb:calc(env(safe-area-inset-bottom,0px) + 14px);
+}
+[hidden]{display:none!important}
+html,body{height:100%;overflow:hidden;margin:0}
+body{background:var(--ink);color:var(--bone);font-family:var(--ui);font-size:16px;-webkit-user-select:none;user-select:none;touch-action:none;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+#vig{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 45%,rgba(4,6,12,.78) 100%);transition:box-shadow .25s}
+body.hurt #vig{box-shadow:inset 0 0 140px 30px rgba(179,18,42,.75)}
+body.sense #vig{box-shadow:inset 0 0 160px 10px rgba(120,20,40,.55)}
+body.off #c{filter:saturate(.35) contrast(1.12)}
+body.sun #vig{box-shadow:inset 0 0 200px 60px rgba(255,170,80,.6)}
+
+.hud{position:fixed;pointer-events:none;text-transform:uppercase;letter-spacing:.09em;font-weight:600;font-size:13px;text-shadow:0 1px 3px #000}
+#stats{top:var(--gt);left:var(--gl);display:grid;gap:7px;width:min(46vw,220px)}
+.bar{display:grid;gap:2px}
+.bar b{display:flex;justify-content:space-between;font-weight:600;color:var(--ash)}
+.bar b span{color:var(--bone);font-variant-numeric:tabular-nums}
+.bar i{display:block;height:7px;background:rgba(233,224,207,.14);border-radius:1px;overflow:hidden}
+.bar i u{display:block;height:100%;width:50%;transition:width .2s}
+#bBlood u{background:linear-gradient(90deg,#6d0817,var(--blood-hi))}
+#bHp u{background:var(--bone)}
+#bHum u{background:linear-gradient(90deg,#3a4a78,var(--lapis))}
+body.off #bHum u{background:var(--ash)}
+#right{top:var(--gt);right:var(--gr);text-align:right;display:grid;gap:6px;justify-items:end}
+#clock{font-family:var(--display);font-size:26px;letter-spacing:.02em;text-transform:none;font-weight:400;line-height:1}
+#sus{width:120px}
+#sus u{background:linear-gradient(90deg,var(--candle),var(--blood-hi))}
+#tools{display:flex;gap:6px;pointer-events:auto}
+button{font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.chip{background:rgba(8,11,18,.6);border:1px solid rgba(233,224,207,.3);padding:6px 10px;border-radius:2px;font-size:12px}
+.chip:focus-visible,.pad:focus-visible,.choice:focus-visible,.big:focus-visible{outline:2px solid var(--candle);outline-offset:2px}
+#obj{top:calc(var(--gt) + 96px);left:var(--gl);max-width:min(70vw,360px);font-family:var(--display);text-transform:none;letter-spacing:0;font-size:17px;font-weight:400;font-style:italic;color:var(--candle);line-height:1.25}
+#obj small{display:block;font-family:var(--ui);font-style:normal;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ash)}
+#prompt{left:50%;bottom:calc(var(--gb) + 150px);transform:translateX(-50%);text-align:center;font-size:15px;background:rgba(8,11,18,.66);padding:7px 14px;border-left:2px solid var(--blood);white-space:nowrap}
+#feed{left:50%;bottom:calc(var(--gb) + 196px);transform:translateX(-50%);width:min(70vw,300px);text-align:center;color:var(--bone)}
+#feed i{display:block;position:relative;height:12px;background:rgba(8,11,18,.7);border:1px solid var(--blood);margin-top:4px}
+#feed i u{display:block;height:100%;background:var(--blood-hi)}
+#feed i::after{content:"";position:absolute;left:30%;top:-4px;bottom:-4px;width:2px;background:var(--bone)}
+#toasts{left:50%;top:calc(var(--gt) + 50px);transform:translateX(-50%);display:grid;gap:6px;justify-items:center;width:min(92vw,560px);text-transform:none;letter-spacing:.01em;font-family:var(--display);font-size:18px;font-weight:400;text-align:center}
+#toasts div{background:rgba(8,11,18,.72);padding:6px 14px;animation:toast 5s forwards}
+@keyframes toast{0%{opacity:0;transform:translateY(-6px)}8%,82%{opacity:1;transform:none}100%{opacity:0}}
+.arrow{position:fixed;pointer-events:none;color:var(--candle);font-size:12px;font-weight:600;letter-spacing:.08em;text-align:center;transform:translate(-50%,-50%);text-shadow:0 1px 3px #000}
+.arrow i{display:block;width:0;height:0;margin:0 auto 2px;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:16px solid var(--candle)}
+
+#joy{position:fixed;left:0;bottom:0;width:46%;height:58%;touch-action:none}
+#stick{position:fixed;width:104px;height:104px;margin:-52px 0 0 -52px;border-radius:50%;border:1px solid rgba(233,224,207,.35);background:rgba(8,11,18,.3);pointer-events:none}
+#stick i{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px;border-radius:50%;background:rgba(233,224,207,.5)}
+#pads{position:fixed;right:var(--gr);bottom:var(--gb);width:212px;height:190px;touch-action:none}
+.pad{position:absolute;width:62px;height:62px;border-radius:50%;background:rgba(8,11,18,.55);border:1px solid rgba(233,224,207,.4);font-size:12px;font-weight:600;touch-action:none}
+.pad:active,.pad.on{background:rgba(179,18,42,.6)}
+#pE{right:0;bottom:0;width:84px;height:84px;border-color:var(--blood-hi);font-size:15px}
+#pJ{right:94px;bottom:4px}#pSp{right:74px;bottom:76px}#pQ{right:4px;bottom:96px;border-color:var(--vervain)}#pF{right:146px;bottom:60px;width:54px;height:54px}
+
+.veil{position:fixed;inset:0;display:grid;place-items:center;background:rgba(6,8,14,.72);padding:20px max(16px,env(safe-area-inset-right,0px)) 20px max(16px,env(safe-area-inset-left,0px));overflow:auto;z-index:5}
+#dlg{position:fixed;left:50%;bottom:var(--gb);transform:translateX(-50%);width:min(94vw,640px);background:rgba(8,11,18,.93);border-top:2px solid var(--blood);padding:16px 20px 14px;z-index:6;cursor:pointer}
+#dwho{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--candle);font-weight:600}
+#dtext{font-family:var(--display);font-size:20px;line-height:1.35;margin:6px 0 10px;text-wrap:pretty}
+#dnext{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ash)}
+#dch{display:grid;gap:8px}
+.choice{text-align:left;background:rgba(233,224,207,.07);border:1px solid rgba(233,224,207,.28);padding:10px 12px;font-family:var(--display);font-size:18px;text-transform:none;letter-spacing:0}
+.choice:hover{border-color:var(--blood-hi)}
+.paper{width:min(100%,560px);max-height:86%;overflow:auto;background:var(--paper);color:var(--paper-ink);padding:26px 28px 22px;font-family:var(--display);font-size:18px;line-height:1.45;box-shadow:0 20px 60px #000;
+  background-image:repeating-linear-gradient(transparent 0 25px,rgba(42,29,20,.13) 25px 26px)}
+.paper h2{font-size:26px;font-weight:400;font-style:italic;margin:0 0 8px}
+.paper p{margin:0 0 14px;text-wrap:pretty}
+.paper p small{display:block;font-family:var(--ui);font-size:11px;letter-spacing:.16em;text-transform:uppercase;opacity:.65}
+.paper p.cold{font-style:italic;opacity:.8}
+.big{background:var(--blood);border:0;color:var(--bone);padding:12px 26px;font-size:15px;letter-spacing:.18em;font-weight:600}
+.paper .big{background:var(--paper-ink);color:var(--paper)}
+#title .inner,#end .inner{width:min(100%,560px);text-align:center}
+#end{background:rgba(6,8,14,.88)}
+#title{background:radial-gradient(ellipse at 50% 30%,rgba(16,24,39,.5),rgba(6,8,14,.92))}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(46px,11vw,88px);line-height:.95;margin:0;letter-spacing:.01em;text-wrap:balance}
+h1 em{color:var(--blood-hi)}
+.sub{font-family:var(--display);font-style:italic;font-size:19px;color:var(--ash);margin:10px 0 22px}
+.keys{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px 18px;text-align:left;font-size:13px;letter-spacing:.07em;text-transform:uppercase;color:var(--ash);margin:0 0 24px}
+.keys b{color:var(--bone);font-weight:600}
+.fine{font-size:11px;letter-spacing:.08em;color:var(--ash);margin-top:20px;text-transform:uppercase}
+#end h1{font-size:clamp(38px,9vw,64px)}
+#end .txt{font-family:var(--display);font-size:19px;line-height:1.45;margin:16px 0;text-align:left;text-wrap:pretty}
+#end .st{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--ash);margin-bottom:20px}
+#black{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .6s;z-index:4;display:grid;place-items:center;font-family:var(--display);font-style:italic;font-size:20px;text-align:center;padding:24px}
+#black.on{opacity:1}
+@media (prefers-reduced-motion:reduce){#toasts div{animation-duration:5s;animation-timing-function:step-end}}
+@media (max-width:600px){#toasts{top:calc(var(--gt) + 176px);font-size:16px}#clock{font-size:22px}}
+@media (max-height:520px){#obj{top:calc(var(--gt) + 84px);font-size:15px}#prompt{bottom:calc(var(--gb) + 100px)}#feed{bottom:calc(var(--gb) + 140px)}}
+</style>
+
+<canvas id="c"></canvas>
+<div id="vig"></div>
+<div id="black"></div>
+
+<div id="hudwrap" hidden>
+  <div class="hud" id="stats">
+    <div class="bar" id="bBlood"><b>Blood <span id="vBlood">30</span></b><i><u></u></i></div>
+    <div class="bar" id="bHp"><b>Body <span id="vHp">100</span></b><i><u></u></i></div>
+    <div class="bar" id="bHum"><b>Humanity <span id="vHum">80</span></b><i><u></u></i></div>
+  </div>
+  <div class="hud" id="right">
+    <div id="clock">9:00 PM</div>
+    <div class="bar" id="sus"><b>Suspicion</b><i><u></u></i></div>
+    <div id="tools">
+      <button class="chip" id="tDiary" type="button">Diary</button>
+      <button class="chip" id="tSwitch" type="button">Switch</button>
+    </div>
+  </div>
+  <div class="hud" id="obj"></div>
+  <div class="hud" id="toasts"></div>
+  <div class="hud" id="feed" hidden>Release before the heart stops<i><u></u></i></div>
+  <div class="hud" id="prompt" hidden></div>
+  <div class="arrow" id="a0" hidden><i></i><span></span></div>
+  <div class="arrow" id="a1" hidden><i></i><span></span></div>
+  <div id="touch" hidden>
+    <div id="joy"></div><div id="stick" hidden><i></i></div>
+    <div id="pads">
+      <button class="pad" id="pE" type="button" data-k="e">Bite</button>
+      <button class="pad" id="pJ" type="button" data-k="j">Strike</button>
+      <button class="pad" id="pSp" type="button" data-k=" ">Dash</button>
+      <button class="pad" id="pQ" type="button" data-k="q">Compel</button>
+      <button class="pad" id="pF" type="button" data-k="f">Sense</button>
+    </div>
+  </div>
+</div>
+
+<div id="dlg" hidden><div id="dwho"></div><div id="dtext"></div><div id="dch"></div><div id="dnext">Tap or press E</div></div>
+<div class="veil" id="diary" hidden><div class="paper"><h2>Dear Diary,</h2><div id="dlist"></div><button class="big" id="dclose" type="button">Close the diary</button></div></div>
+
+<div class="veil" id="title">
+  <div class="inner">
+    <h1>Hollow <em>Moon</em></h1>
+    <p class="sub">One night in Mystic Falls. The sun comes up at six.</p>
+    <div class="keys">
+      <span><b>WASD</b> move</span><span><b>Space</b> vampire speed</span><span><b>Hold E</b> feed / use</span>
+      <span><b>Q</b> compel</span><span><b>F</b> heightened senses</span><span><b>J / click</b> strike</span>
+      <span><b>H</b> humanity switch</span><span><b>Tab</b> diary</span>
+    </div>
+    <button class="big" id="begin" type="button" disabled>Raising the dead…</button>
+    <p class="fine">Unofficial fan game. Original characters, not affiliated with the series.</p>
+  </div>
+</div>
+<div class="veil" id="end" hidden><div class="inner"><h1 id="etitle"></h1><div class="txt" id="etext"></div><div class="st" id="estats"></div><button class="big" id="again" type="button">Live the night again</button></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="assets/models.js"></script>
+<script src="game.js"></script>
