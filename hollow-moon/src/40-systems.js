@@ -327,7 +327,7 @@ function sysEvent(type, a) {
 function qEvent(type, a, b) {
   sysEvent(type, a);
   for (const id in S.quests) { const st = S.quests[id], s = QUESTS[id].steps[st.step]; if (!s || s.t !== type) continue; let ok = false;
-    if (type === 'kill') ok = (!s.type || [].concat(s.type).includes(a.type)) && (!s.fam || [].concat(s.fam).includes(a.fam)) && (!s.tag || s.tag === a.tag) && (!s.night || isNight()) && (!s.zone || zoneAt(a.x, a.z).id === s.zone) && (!s.tomb || RT.area.id === 'tomb');
+    if (type === 'kill') ok = (!s.type || [].concat(s.type).includes(a.type)) && (!s.fam || [].concat(s.fam).includes(a.fam)) && (!s.tag || s.tag === a.tag) && (!s.night || isNight()) && (!s.zone || (RT.area.id === 'world' && zoneAt(a.x, a.z).id === s.zone)) && (!s.tomb || RT.area.id === 'tomb');
     else if (type === 'talk' || type === 'reach' || type === 'flag') ok = s.id === a; else if (type === 'gather') { if (s.item === a) { st.n += (b || 1) - 1; ok = true; } } else if (type === 'floor') { if (a >= s.n) { st.n = s.n; ok = true; } else continue; } else if (type === 'level') { if (a >= s.n) { st.n = s.n; ok = true; } else continue; } else if (type === 'use') ok = !s.item || s.item === a; else ok = true;
     if (ok) { st.n++; if (st.n >= (type === 'floor' || type === 'level' ? s.n : s.n || 1)) advQuest(id); } }
   for (const bq of S.bounties) { if (!bq.acc || bq.done) continue; if (type === 'kill' && ((bq.k === 'kill' && a.type === bq.type) || (bq.k === 'elite' && a.tag === bq.id))) { bq.prog++; if (bq.prog >= bq.n) { bq.done = true; toast('Bounty fulfilled. Collect at the board.'); sfx('quest'); } } else if (type === 'floor' && bq.k === 'floor' && a >= bq.n) { bq.prog = bq.n; bq.done = true; toast('Bounty fulfilled. Collect at the board.'); } }
