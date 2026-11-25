@@ -126,7 +126,7 @@ function hasQuestFor(id) { for (const q in S.quests) { const s = QUESTS[q] && QU
 /* ---------------- menus ---------------- */
 const TABS = [['char', 'Character'], ['inv', 'Pack'], ['skills', 'Skills'], ['journal', 'Journal'], ['codex', 'Codex'], ['map', 'Map'], ['system', 'System']];
 let selItem = null, vendId = null;
-function openMenu(tab) { if (dq || !RT.started || pl.dead) return; RT.menu = tab || RT.menu || 'inv'; $('menu').hidden = false; for (const k in K) K[k] = false; mouse.l = mouse.r = false; J.x = J.y = 0; selItem = null; sfx('ui'); renderMenu(); }
+function openMenu(tab) { if (dq || !RT.started || pl.dead) return; RT.menu = tab || RT.menu || 'inv'; $('menu').hidden = false; for (const k in K) K[k] = false; mouse.l = mouse.r = false; J.x = J.y = 0; selItem = null; sfx('ui'); renderMenu(); $('mbody').scrollTop = 0; }
 function closeMenu() { RT.menu = null; vendId = null; $('menu').hidden = true; $('tip').hidden = true; if (pl) pl.heavyUsed = true; save(); }
 function openVendor(id) { vendId = id; openMenu('vendor'); }
 const H = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -209,7 +209,7 @@ function renderMenu() {
 function drawBigMap() { const c = $('bigmap'), g = c.getContext('2d'); if (WORLDMAP) g.drawImage(WORLDMAP, 0, 0, c.width, c.height); const k = c.width / (WS * 2); g.fillStyle = 'rgba(8,10,16,.25)'; g.fillRect(0, 0, c.width, c.height); if (RT.area.id === 'world') { g.fillStyle = '#fff'; g.beginPath(); g.arc((pl.x + WS) * k, (pl.z + WS) * k, 6, 0, 7); g.fill(); g.strokeStyle = '#b3122a'; g.lineWidth = 3; g.stroke(); } for (const t of RT.targets || []) { g.fillStyle = '#ffe040'; g.beginPath(); g.arc((t.x + WS) * k, (t.z + WS) * k, 7, 0, 7); g.fill(); } }
 $('menu').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
-  if (b.id === 'mclose') return closeMenu(); if (d.tab) { RT.menu = d.tab; selItem = null; sfx('ui'); }
+  if (b.id === 'mclose') return closeMenu(); if (d.tab) { RT.menu = d.tab; selItem = null; sfx('ui'); renderMenu(); $('mbody').scrollTop = 0; return; }
   else if (d.item) { selItem = findItem(d.item); sfx('ui'); } else if (d.attr) { if (S.ap > 0) { S.ap--; S.attr[d.attr]++; recalc(); sfx('ui'); } } else if (d.learn) learn(d.learn); else if (d.bind) { const [k, i] = d.bind.split(':'); S.bar = S.bar.map(x => x === k ? null : x); S.bar[+i] = k; sfx('ui'); }
   else if (d.asc) { const c = ascCost(S.asc[d.asc]); if (S.sigils >= c) { S.sigils -= c; S.asc[d.asc]++; recalc(); sfx('quest'); } } else if (d.poi) return fastTravel(POI.find(p => p.id === d.poi)); else if (d.q) { setQuality(d.q); try { localStorage.setItem('hollowmoon.q', d.q); } catch (er) { } }
   else if (d.cons) { if (RT.menu === 'vendor') { if (!CONS[d.cons].quest && S.cons[d.cons] > 0) { S.cons[d.cons]--; S.gold += Math.max(1, Math.round(CONS[d.cons].price * 0.4)); sfx('coin'); } } else if (!useCons(d.cons) && !storyUse(d.cons)) sfx('deny'); if (!RT.menu) return; }   // some supplies close the menu to ask a question first

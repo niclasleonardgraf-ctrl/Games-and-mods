@@ -204,7 +204,7 @@ const TOMBMODS = [{ n: 'Swarm', d: 'half again as many, each a little weaker.', 
    Its keepers: the Warden on 5, Corvin on 10, the Sleeper and the Cure on 20. A keeper who has truly died does not come back; another takes the floor.
    Nothing in wolf form is ever down here. There is no moon underground. */
 const TOMBKEEP = { 5: 'warden', 10: 'corvin', 20: 'sleeper' }, TOMBROTA = ['matriarch', 'warden', 'lenore'];
-function tombBoss(d) { const sl = S.flags.slain || {}, ok = t => t && EN[t] && !sl[t]; let t = ok(TOMBKEEP[d]) ? TOMBKEEP[d] : null; for (let i = 0; i < TOMBROTA.length && !t; i++) { const c = TOMBROTA[(d / 5 + i) % TOMBROTA.length]; if (ok(c)) t = c; } return t || 'elder'; }
+function tombBoss(d) { const sl = S.flags.slain || {}, fate = S.flags.corvinFate, ok = t => t && EN[t] && !sl[t] && !lineDead(EN[t]) && !(t === 'corvin' && (fate === 'desic' || fate === 'bargain')); let t = ok(TOMBKEEP[d]) ? TOMBKEEP[d] : null; for (let i = 0; i < TOMBROTA.length && !t; i++) { const c = TOMBROTA[(d / 5 + i) % TOMBROTA.length]; if (ok(c)) t = c; } return t || 'elder'; }
 function tombTable(d) {
   const t = d < 5 ? ['tombvamp'] : d < 10 ? ['stalker', 'cultist', 'thrall', 'warlock', 'shade'] : d < 15 ? ['stalker', 'elder', 'warlock', 'shade', 'cultist'] : ['elder', 'warlock', 'hybrid', 'stalker', 'shade', 'elder'];
   const ok = t.filter(k => EN[k] && !EN[k].boss && !EN[k].full && !(EN[k].fam === 'wolf' && EN[k].rig !== 'human') && needOk(EN[k], true) && !lineDead(EN[k])); return ok.length ? ok : [EN.feral ? 'feral' : Object.keys(EN)[0]];

@@ -477,10 +477,9 @@ function storyUse(k) {
     talisman: "Emeline Thorne's crystal. It opens what she sealed: the door on the twentieth floor of the Tomb.", lapisq: 'Lapis lazuli. Odette Thorne can bind the sun into it, for one vampire.', locket: 'Tarnished, engraved E.F. Mrs. Pruitt asked for it.', dblood: "Elise Gilroy's blood. It finishes a hybrid's transition, and it is one part of a much older spell. It does nothing for you as you are." }[k];
   if (!note || !hasCons(k)) return false; toast(note); return true;
 }
-/* keep the world in step with the story: who keeps the tenth floor, whether the sign is still on the bridge, and no quest left pointing at a step that does not exist */
+/* keep the world in step with the story: whether the sign is still on the bridge, and no quest left pointing at a step that does not exist (who keeps the tenth floor: tombBoss reads S.flags.corvinFate) */
 function storySync() {
   const F = S.flags, a = RT.area; for (const id in S.quests) if (!QUESTS[id] || S.quests[id].step >= QUESTS[id].steps.length) delete S.quests[id];
-  if (typeof TOMBKEEP === 'object') { if (F.corvinFate === 'desic' || F.corvinFate === 'bargain') delete TOMBKEEP[10]; else TOMBKEEP[10] = 'corvin'; }   // carried off in a coffin, or walking free: either way he is not down there
   if (a && a.storyProps) a.storyProps.sign.visible = !F.signTaken;
 }
 /* periodic world checks: discovery, timed keepers, who is standing where, and everything Odette, Casimir and the moon do on their own time */

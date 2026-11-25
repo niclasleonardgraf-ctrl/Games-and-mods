@@ -189,11 +189,11 @@ function trueDeath(e, src, o) {
   else if (!L) floatText(e.x, 3, e.z, m === 'venom' ? 'THE VENOM TAKES IT' : m === 'steel' ? 'BEHEADED' : 'STAKED', '#ffd24a', 15);
   if (e.def.boss) (S.flags.slain = S.flags.slain || {})[e.type] = S.day;
   die(e, src);
-  // when an Original dies, every vampire he ever made dies with him, unless a witch has cut the line loose
+  // when an Original dies, every vampire he ever made dies with him. The player's own unlinking (S.unlinked) spares the player and nobody else; Ambrose can be cut loose separately
   if (L === 'whiteoak' && isOrig(e)) storyEvent('slain', e);
-  if (L === 'whiteoak' && isOrig(e) && !S.unlinked) for (const a of actors) if (a.kind === 'enemy' && !a.dead && !a.phantom && a.def.line === e.type) { a.paid = true; a.downed = false; tombFell(a); floatText(a.x, 2.9, a.z, 'THE LINE DIES', '#b8c0d0', 13); puff(a.x, 1.5, a.z, 8, { c: BLOOD, add: 0.05, sp: 1.5, life: 0.6, size: 0.2 }); die(a, null); }
+  if (L === 'whiteoak' && isOrig(e)) for (const a of actors.slice()) if (a.kind === 'enemy' && !a.dead && !a.phantom && a.def.line === e.type && !(a.type === 'ambrose' && S.flags.ambroseFree)) { a.paid = true; a.downed = false; tombFell(a); floatText(a.x, 2.9, a.z, 'THE LINE DIES', '#b8c0d0', 13); puff(a.x, 1.5, a.z, 8, { c: BLOOD, add: 0.05, sp: 1.5, life: 0.6, size: 0.2 }); die(a, null); }
 }
-const lineDead = d => !!(d.line && S.flags.slain && S.flags.slain[d.line] && !S.unlinked);
+const lineDead = d => !!(d.line && S.flags.slain && S.flags.slain[d.line]);   // nothing of a dead Original's line is left to meet
 /* a vampire, hybrid or Original with nothing left only goes grey and lies still for a while. Finish it (finishDowned, or the right kind of blow) or it gets up. */
 function downEnemy(e, src) {
   const orig = isOrig(e), first = !e.downN; e.downed = true; e.downN = (e.downN || 0) + 1; e.hp = 1; e.sw = null; e.lieK = 0; e.sp = 0; e.kx = e.kz = 0; e.y = 0; e.poise = e.maxPoise; e.fx.stun = e.fx.charm = e.fx.bleed = 0; if (e.team === 0 && !e.ally) e.team = 1; dropAtk(e);

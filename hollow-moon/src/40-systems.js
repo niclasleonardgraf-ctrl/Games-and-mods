@@ -328,13 +328,13 @@ function checkHave() { for (const id in S.quests) { const st = S.quests[id], s =
 const qAt = (id, step) => S.quests[id] && (step == null || S.quests[id].step === step);
 function qTarget(s) { if (s.at) return s.at; if (s.t === 'talk') { const n = NPCS.find(n => n.id === s.id); if (n) { const act = actors.find(a => a.npc && a.npc.id === s.id); return act ? act : { x: n.x, z: n.z }; } } if (s.t === 'reach') { const p = POI.find(p => p.id === s.id); if (p) return p; } return null; }
 /* which enemy types may be about in a zone right now: no vampire by day (the tables see to that), the whole pack turned on the full moon, nothing that does not exist yet */
-const typeOk = t => { const d = EN[t]; return !!d && (!d.full || (fullMoon() && isNight())) && (!d.need || !!S.flags[d.need]); };
+const typeOk = t => { const d = EN[t]; return !!d && (!d.full || (fullMoon() && isNight())) && (!d.need || !!S.flags[d.need]) && !lineDead(d); };
 function spawnTable(z) { const night = isNight(), t = night ? (fullMoon() && z.full ? z.full : z.night) : z.day; return (t || []).filter(typeOk); }
 const plural = t => EN[t].pl || EN[t].n + 's';
 function genBounties() {
   if (S.bountyDay === S.day && S.bounties.length) return; S.bountyDay = S.day; S.bounties = S.bounties.filter(b => b.acc && !b.paid); const L = S.lvl;
   /* the Council pays for monsters: nothing peaceful, nobody who leaves ordinary people alone (the pack, its own hunters), nothing that only exists under a full moon */
-  const fair = z => (z.night || []).concat(z.day || []).filter(t => { const d = EN[t]; return !d.peaceful && !d.onlyVs && !d.full && (!d.need || S.flags[d.need]); }), zs = ZONES.filter(z => !z.safe && z.night && z.lvl <= L + 6 && fair(z).length); let guard = 0;
+  const fair = z => (z.night || []).concat(z.day || []).filter(t => { const d = EN[t]; return !d.peaceful && !d.onlyVs && !d.full && (!d.need || S.flags[d.need]) && !lineDead(d); }), zs = ZONES.filter(z => !z.safe && z.night && z.lvl <= L + 6 && fair(z).length); let guard = 0;
   while (zs.length && S.bounties.length < 4 && guard++ < 30) { const k = chance(0.5) ? 'kill' : chance(0.6) ? 'elite' : 'floor', z = pick(zs), type = pick(fair(z)), id = 'b' + S.day + '_' + guard, lv = Math.max(z.lvl, Math.round(L * 0.9));
     if (k === 'floor' && S.deepest < 1 && !S.done.q_tomb) continue; const n = k === 'kill' ? RI(5, 9) : k === 'floor' ? S.deepest + RI(1, 2) : 1, mult = k === 'kill' ? 1 : k === 'elite' ? 1.6 : 1.4, dark = EN[type].fam === 'vampire';
     S.bounties.push({ id, k, type, zone: z.id, zn: z.n, n, prog: 0, acc: false, done: false, lvl: lv, gold: Math.round((24 + L * 11) * mult), xp: Math.round(xpNeed(L) * 0.14 * mult),

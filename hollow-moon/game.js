@@ -698,7 +698,7 @@ const TOMBMODS = [{ n: 'Swarm', d: 'half again as many, each a little weaker.', 
    Its keepers: the Warden on 5, Corvin on 10, the Sleeper and the Cure on 20. A keeper who has truly died does not come back; another takes the floor.
    Nothing in wolf form is ever down here. There is no moon underground. */
 const TOMBKEEP = { 5: 'warden', 10: 'corvin', 20: 'sleeper' }, TOMBROTA = ['matriarch', 'warden', 'lenore'];
-function tombBoss(d) { const sl = S.flags.slain || {}, ok = t => t && EN[t] && !sl[t]; let t = ok(TOMBKEEP[d]) ? TOMBKEEP[d] : null; for (let i = 0; i < TOMBROTA.length && !t; i++) { const c = TOMBROTA[(d / 5 + i) % TOMBROTA.length]; if (ok(c)) t = c; } return t || 'elder'; }
+function tombBoss(d) { const sl = S.flags.slain || {}, fate = S.flags.corvinFate, ok = t => t && EN[t] && !sl[t] && !lineDead(EN[t]) && !(t === 'corvin' && (fate === 'desic' || fate === 'bargain')); let t = ok(TOMBKEEP[d]) ? TOMBKEEP[d] : null; for (let i = 0; i < TOMBROTA.length && !t; i++) { const c = TOMBROTA[(d / 5 + i) % TOMBROTA.length]; if (ok(c)) t = c; } return t || 'elder'; }
 function tombTable(d) {
   const t = d < 5 ? ['tombvamp'] : d < 10 ? ['stalker', 'cultist', 'thrall', 'warlock', 'shade'] : d < 15 ? ['stalker', 'elder', 'warlock', 'shade', 'cultist'] : ['elder', 'warlock', 'hybrid', 'stalker', 'shade', 'elder'];
   const ok = t.filter(k => EN[k] && !EN[k].boss && !EN[k].full && !(EN[k].fam === 'wolf' && EN[k].rig !== 'human') && needOk(EN[k], true) && !lineDead(EN[k])); return ok.length ? ok : [EN.feral ? 'feral' : Object.keys(EN)[0]];
@@ -975,11 +975,11 @@ function trueDeath(e, src, o) {
   else if (!L) floatText(e.x, 3, e.z, m === 'venom' ? 'THE VENOM TAKES IT' : m === 'steel' ? 'BEHEADED' : 'STAKED', '#ffd24a', 15);
   if (e.def.boss) (S.flags.slain = S.flags.slain || {})[e.type] = S.day;
   die(e, src);
-  // when an Original dies, every vampire he ever made dies with him, unless a witch has cut the line loose
+  // when an Original dies, every vampire he ever made dies with him. The player's own unlinking (S.unlinked) spares the player and nobody else; Ambrose can be cut loose separately
   if (L === 'whiteoak' && isOrig(e)) storyEvent('slain', e);
-  if (L === 'whiteoak' && isOrig(e) && !S.unlinked) for (const a of actors) if (a.kind === 'enemy' && !a.dead && !a.phantom && a.def.line === e.type) { a.paid = true; a.downed = false; tombFell(a); floatText(a.x, 2.9, a.z, 'THE LINE DIES', '#b8c0d0', 13); puff(a.x, 1.5, a.z, 8, { c: BLOOD, add: 0.05, sp: 1.5, life: 0.6, size: 0.2 }); die(a, null); }
+  if (L === 'whiteoak' && isOrig(e)) for (const a of actors.slice()) if (a.kind === 'enemy' && !a.dead && !a.phantom && a.def.line === e.type && !(a.type === 'ambrose' && S.flags.ambroseFree)) { a.paid = true; a.downed = false; tombFell(a); floatText(a.x, 2.9, a.z, 'THE LINE DIES', '#b8c0d0', 13); puff(a.x, 1.5, a.z, 8, { c: BLOOD, add: 0.05, sp: 1.5, life: 0.6, size: 0.2 }); die(a, null); }
 }
-const lineDead = d => !!(d.line && S.flags.slain && S.flags.slain[d.line] && !S.unlinked);
+const lineDead = d => !!(d.line && S.flags.slain && S.flags.slain[d.line]);   // nothing of a dead Original's line is left to meet
 /* a vampire, hybrid or Original with nothing left only goes grey and lies still for a while. Finish it (finishDowned, or the right kind of blow) or it gets up. */
 function downEnemy(e, src) {
   const orig = isOrig(e), first = !e.downN; e.downed = true; e.downN = (e.downN || 0) + 1; e.hp = 1; e.sw = null; e.lieK = 0; e.sp = 0; e.kx = e.kz = 0; e.y = 0; e.poise = e.maxPoise; e.fx.stun = e.fx.charm = e.fx.bleed = 0; if (e.team === 0 && !e.ally) e.team = 1; dropAtk(e);
@@ -1499,14 +1499,14 @@ function startFeed(n) {
   pl.rot = dirTo(pl, n); n.rot = pl.rot; sfx('bite'); puff(n.x, 1.5, n.z, 8, { c: BLOOD, add: 0.05, sp: 2, life: 0.5, size: 0.2 }); rigEyes(pl.rigH, 2); pl.faceT = 1.5;
   let seen = 0; for (const o of actors) if (o.kind === 'npc' && o !== n && !o.dead && o.rig.g.visible && d2(o, n) < 12 && los(o, n)) { seen++; o.fleeT = 6; } if (seen) { S.exposure = Math.min(100, S.exposure + 14 + seen * 8); toast('Someone saw you.'); }
   if (n.verv && !tr) { vervBurn(); pl.sw = { kind: 'bite', t: 0, dur: 0.4 }; n.fleeT = 8; n.fearDay = S.day; n.fedDay = S.day; S.exposure = Math.min(100, S.exposure + 25); S.stats.feeds++; toast('Vervain. It burns all the way down, you get nothing, and they will remember your face.'); codex('vervain'); return; }
-  pl.feed = { v: n, got: 0 }; n.held = true; n.pose = 'held'; pl.sw = { kind: 'bite', t: 0, dur: 9, hold: true };
+  pl.feed = { v: n, got: 0, auto: !!tr }; n.held = true;                                                                 // the first mouthful in transition was agreed to in so many words: it does not also need the key held n.pose = 'held'; pl.sw = { kind: 'bite', t: 0, dur: 9, hold: true };
 }
 function endFeed(interrupted, quiet) {
   const f = pl.feed; if (!f) return; const n = f.v, fd = $('feed'); pl.feed = null; pl.sw = null; n.held = false; n.pose = null; if (fd) fd.hidden = true; if (n.dead) return; n.dazed = 5; n.fedDay = S.day; S.stats.feeds++;
   if (!interrupted && !quiet) { if (!S.switchOff) S.humanity = Math.min(100, S.humanity + 1); toast('You catch their eye and tell them to forget. They will remember a dizzy spell and nothing else.'); }
 }
 function updFeed(dt) {
-  const f = pl.feed, n = f.v, fd = $('feed'), ff = $('feedfill'); pl.sp = 0; if (!K.e || n.dead) return endFeed(false); const am = Math.min(n.blood, 24 * dt); n.blood -= am; f.got += am;
+  const f = pl.feed, n = f.v, fd = $('feed'), ff = $('feedfill'); pl.sp = 0; if ((!K.e && !f.auto) || n.dead) return endFeed(false); const am = Math.min(n.blood, 24 * dt); n.blood -= am; f.got += am;
   if (S.transition) { if (f.got >= 5) { endFeed(false, true); n.fearDay = S.day; n.fleeT = 6; completeTransition(); } return; }                                 // the first human blood: the change is finished
   pl.blood = Math.min(P.maxBlood, pl.blood + am * 0.6); heal(P.maxHp * 0.035 * dt, true); if (S.diet !== 'human' && f.got > 3) { S.diet = 'human'; recalc(); }
   if (fd) fd.hidden = false; if (ff) ff.style.width = n.blood + '%'; pl.hbT = (pl.hbT || 0) - dt; if (pl.hbT <= 0) { sfx('heart'); pl.hbT = lerp(1.2, 0.42, n.blood / 100); }
@@ -1973,13 +1973,13 @@ function checkHave() { for (const id in S.quests) { const st = S.quests[id], s =
 const qAt = (id, step) => S.quests[id] && (step == null || S.quests[id].step === step);
 function qTarget(s) { if (s.at) return s.at; if (s.t === 'talk') { const n = NPCS.find(n => n.id === s.id); if (n) { const act = actors.find(a => a.npc && a.npc.id === s.id); return act ? act : { x: n.x, z: n.z }; } } if (s.t === 'reach') { const p = POI.find(p => p.id === s.id); if (p) return p; } return null; }
 /* which enemy types may be about in a zone right now: no vampire by day (the tables see to that), the whole pack turned on the full moon, nothing that does not exist yet */
-const typeOk = t => { const d = EN[t]; return !!d && (!d.full || (fullMoon() && isNight())) && (!d.need || !!S.flags[d.need]); };
+const typeOk = t => { const d = EN[t]; return !!d && (!d.full || (fullMoon() && isNight())) && (!d.need || !!S.flags[d.need]) && !lineDead(d); };
 function spawnTable(z) { const night = isNight(), t = night ? (fullMoon() && z.full ? z.full : z.night) : z.day; return (t || []).filter(typeOk); }
 const plural = t => EN[t].pl || EN[t].n + 's';
 function genBounties() {
   if (S.bountyDay === S.day && S.bounties.length) return; S.bountyDay = S.day; S.bounties = S.bounties.filter(b => b.acc && !b.paid); const L = S.lvl;
   /* the Council pays for monsters: nothing peaceful, nobody who leaves ordinary people alone (the pack, its own hunters), nothing that only exists under a full moon */
-  const fair = z => (z.night || []).concat(z.day || []).filter(t => { const d = EN[t]; return !d.peaceful && !d.onlyVs && !d.full && (!d.need || S.flags[d.need]); }), zs = ZONES.filter(z => !z.safe && z.night && z.lvl <= L + 6 && fair(z).length); let guard = 0;
+  const fair = z => (z.night || []).concat(z.day || []).filter(t => { const d = EN[t]; return !d.peaceful && !d.onlyVs && !d.full && (!d.need || S.flags[d.need]) && !lineDead(d); }), zs = ZONES.filter(z => !z.safe && z.night && z.lvl <= L + 6 && fair(z).length); let guard = 0;
   while (zs.length && S.bounties.length < 4 && guard++ < 30) { const k = chance(0.5) ? 'kill' : chance(0.6) ? 'elite' : 'floor', z = pick(zs), type = pick(fair(z)), id = 'b' + S.day + '_' + guard, lv = Math.max(z.lvl, Math.round(L * 0.9));
     if (k === 'floor' && S.deepest < 1 && !S.done.q_tomb) continue; const n = k === 'kill' ? RI(5, 9) : k === 'floor' ? S.deepest + RI(1, 2) : 1, mult = k === 'kill' ? 1 : k === 'elite' ? 1.6 : 1.4, dark = EN[type].fam === 'vampire';
     S.bounties.push({ id, k, type, zone: z.id, zn: z.n, n, prog: 0, acc: false, done: false, lvl: lv, gold: Math.round((24 + L * 11) * mult), xp: Math.round(xpNeed(L) * 0.14 * mult),
@@ -2583,10 +2583,9 @@ function storyUse(k) {
     talisman: "Emeline Thorne's crystal. It opens what she sealed: the door on the twentieth floor of the Tomb.", lapisq: 'Lapis lazuli. Odette Thorne can bind the sun into it, for one vampire.', locket: 'Tarnished, engraved E.F. Mrs. Pruitt asked for it.', dblood: "Elise Gilroy's blood. It finishes a hybrid's transition, and it is one part of a much older spell. It does nothing for you as you are." }[k];
   if (!note || !hasCons(k)) return false; toast(note); return true;
 }
-/* keep the world in step with the story: who keeps the tenth floor, whether the sign is still on the bridge, and no quest left pointing at a step that does not exist */
+/* keep the world in step with the story: whether the sign is still on the bridge, and no quest left pointing at a step that does not exist (who keeps the tenth floor: tombBoss reads S.flags.corvinFate) */
 function storySync() {
   const F = S.flags, a = RT.area; for (const id in S.quests) if (!QUESTS[id] || S.quests[id].step >= QUESTS[id].steps.length) delete S.quests[id];
-  if (typeof TOMBKEEP === 'object') { if (F.corvinFate === 'desic' || F.corvinFate === 'bargain') delete TOMBKEEP[10]; else TOMBKEEP[10] = 'corvin'; }   // carried off in a coffin, or walking free: either way he is not down there
   if (a && a.storyProps) a.storyProps.sign.visible = !F.signTaken;
 }
 /* periodic world checks: discovery, timed keepers, who is standing where, and everything Odette, Casimir and the moon do on their own time */
@@ -2756,7 +2755,7 @@ function hasQuestFor(id) { for (const q in S.quests) { const s = QUESTS[q] && QU
 /* ---------------- menus ---------------- */
 const TABS = [['char', 'Character'], ['inv', 'Pack'], ['skills', 'Skills'], ['journal', 'Journal'], ['codex', 'Codex'], ['map', 'Map'], ['system', 'System']];
 let selItem = null, vendId = null;
-function openMenu(tab) { if (dq || !RT.started || pl.dead) return; RT.menu = tab || RT.menu || 'inv'; $('menu').hidden = false; for (const k in K) K[k] = false; mouse.l = mouse.r = false; J.x = J.y = 0; selItem = null; sfx('ui'); renderMenu(); }
+function openMenu(tab) { if (dq || !RT.started || pl.dead) return; RT.menu = tab || RT.menu || 'inv'; $('menu').hidden = false; for (const k in K) K[k] = false; mouse.l = mouse.r = false; J.x = J.y = 0; selItem = null; sfx('ui'); renderMenu(); $('mbody').scrollTop = 0; }
 function closeMenu() { RT.menu = null; vendId = null; $('menu').hidden = true; $('tip').hidden = true; if (pl) pl.heavyUsed = true; save(); }
 function openVendor(id) { vendId = id; openMenu('vendor'); }
 const H = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -2839,7 +2838,7 @@ function renderMenu() {
 function drawBigMap() { const c = $('bigmap'), g = c.getContext('2d'); if (WORLDMAP) g.drawImage(WORLDMAP, 0, 0, c.width, c.height); const k = c.width / (WS * 2); g.fillStyle = 'rgba(8,10,16,.25)'; g.fillRect(0, 0, c.width, c.height); if (RT.area.id === 'world') { g.fillStyle = '#fff'; g.beginPath(); g.arc((pl.x + WS) * k, (pl.z + WS) * k, 6, 0, 7); g.fill(); g.strokeStyle = '#b3122a'; g.lineWidth = 3; g.stroke(); } for (const t of RT.targets || []) { g.fillStyle = '#ffe040'; g.beginPath(); g.arc((t.x + WS) * k, (t.z + WS) * k, 7, 0, 7); g.fill(); } }
 $('menu').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
-  if (b.id === 'mclose') return closeMenu(); if (d.tab) { RT.menu = d.tab; selItem = null; sfx('ui'); }
+  if (b.id === 'mclose') return closeMenu(); if (d.tab) { RT.menu = d.tab; selItem = null; sfx('ui'); renderMenu(); $('mbody').scrollTop = 0; return; }
   else if (d.item) { selItem = findItem(d.item); sfx('ui'); } else if (d.attr) { if (S.ap > 0) { S.ap--; S.attr[d.attr]++; recalc(); sfx('ui'); } } else if (d.learn) learn(d.learn); else if (d.bind) { const [k, i] = d.bind.split(':'); S.bar = S.bar.map(x => x === k ? null : x); S.bar[+i] = k; sfx('ui'); }
   else if (d.asc) { const c = ascCost(S.asc[d.asc]); if (S.sigils >= c) { S.sigils -= c; S.asc[d.asc]++; recalc(); sfx('quest'); } } else if (d.poi) return fastTravel(POI.find(p => p.id === d.poi)); else if (d.q) { setQuality(d.q); try { localStorage.setItem('hollowmoon.q', d.q); } catch (er) { } }
   else if (d.cons) { if (RT.menu === 'vendor') { if (!CONS[d.cons].quest && S.cons[d.cons] > 0) { S.cons[d.cons]--; S.gold += Math.max(1, Math.round(CONS[d.cons].price * 0.4)); sfx('coin'); } } else if (!useCons(d.cons) && !storyUse(d.cons)) sfx('deny'); if (!RT.menu) return; }   // some supplies close the menu to ask a question first
@@ -2936,6 +2935,7 @@ window.HM = { get S() { return S; }, get pl() { return pl; }, get P() { return P
   setForm: (wolf, willing) => setForm(wolf, willing), toggleShift: () => toggleShift(), canShift: () => canShift(), triggerCurse: () => triggerCurse(), beginTransition: (to, how) => beginTransition(to, how), completeTransition: () => completeTransition(), failTransition: why => failTransition(why),
   becomeOriginal: () => becomeOriginal(), cureVampire: () => cureVampire(), unlinkSire: () => unlinkSire(), envenom: src => envenom(src), cureVenom: how => cureVenom(how), hunterCurse: () => hunterCurse(), despellRing: on => despellRing(on), playerDeath: (src, o) => playerDeath(src, o), respawn: () => respawn(),
   isVamp: () => isVamp(), isWolf: () => isWolf(), isHybrid: () => isHybrid(), inTransition: () => inTransition(), canMagic: () => canMagic(), treeOpen: t => treeOpen(t), treePts: t => treePts(t), sk: id => sk(id), hasUniq: k => hasUniq(k), daylightSafe: () => daylightSafe(), immuneCompel: o => immuneCompel(o), moonPower: () => moonPower(), absHours: () => absHours(),
-  isNight: () => isNight(), fullMoon: () => fullMoon(), moonPhase: () => moonPhase(), codex: id => codex(id), learn: id => learn(id), useCons: k => useCons(k), addCons: (k, n, quiet) => addCons(k, n, quiet), castSkill: i => castSkill(i), actorInteract: (a, d) => actorInteract(a, d), spawnNpc: o => spawnNpc(o) };
+  isNight: () => isNight(), fullMoon: () => fullMoon(), moonPhase: () => moonPhase(), codex: id => codex(id), learn: id => learn(id), useCons: k => useCons(k), addCons: (k, n, quiet) => addCons(k, n, quiet), castSkill: i => castSkill(i), actorInteract: (a, d) => actorInteract(a, d), spawnNpc: o => spawnNpc(o),
+  finishDowned: e => finishDowned(e), tickClock: dt => tickClock(dt), flipSwitch: f => flipSwitch(f), chainUp: () => chainUp(), channelHundred: () => channelHundred(), canLearn: id => canLearn(id), fullTonight: () => fullTonight(), sireBound: () => sireBound(), lineLinked: () => lineLinked(), shiftAllowed: () => shiftAllowed(), isBound: it => isBound(it), sleepUntil: h => sleepUntil(h) };
 boot();
 })();

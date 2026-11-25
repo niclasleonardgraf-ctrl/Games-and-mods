@@ -1,18 +1,26 @@
-const { chromium } = require('playwright');
+/* Hollow Moon — screenshots at 1280x720 for looking at.  node tools/tests/screens.js <dir> <what,what,...> [origin]
+   what: title · skills char pack codex journal map (menu tabs) · wolf (the wolf body, on a full-moon night) · hud (transition countdown and status lines) ·
+   town square cem woods chapel falls cellar lake farm manor quarry hollow camp bridge res (places) · tomb boss sleeper.  Files are written as <dir>/x_<what>.png. */
+const { launch, open, ok, note, finish, T } = require('./_lib');
 (async () => {
-  const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-  const SP = process.argv[2]; const want = (process.argv[3] || '').split(',');
-  const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
-  const errs = []; p.on('console', m => { if (m.type() === 'warning' && /missing model/.test(m.text())) errs.push(m.text()); }); p.on('pageerror', e => errs.push('PAGEERR ' + e.message + '\n' + (e.stack || '').split('\n').slice(1, 4).join('\n')));
-  await p.goto('http://localhost:8765/index.html'); await p.waitForFunction(() => window.HM && window.HM.pl && !document.getElementById('begin').disabled, null, { timeout: 120000 });
-  await p.waitForTimeout(2500); if (want.includes('title')) await p.screenshot({ path: SP + '/x_title.png' });
-  await p.evaluate(() => { try { localStorage.clear(); } catch (e) { } document.getElementById('begin').click(); }); await p.waitForTimeout(400);
-  for (let i = 0; i < 2; i++) { await p.keyboard.press('e'); await p.waitForTimeout(250); }
-  const ev = (f, a) => p.evaluate(f, a), wait = ms => p.waitForTimeout(ms);
-  await ev(() => { HM.RT.touch = true; document.getElementById('toasts').style.display = 'none'; });
-  const V = { town: [6, -18, 14], square: [-4, 8, 22], cem: [-140, 44, 0.5], woods: [-40, -120, 23], chapel: [-130, -160, 22], falls: [196, -224, 10], lake: [-128, 172, 19.3], farm: [34, 222, 9], manor: [234, -50, 21.5], quarry: [150, 176, 23], hollow: [-20, -236, 1], camp: [-228, -66, 20.5], bridge: [196, -40, 6.2], res: [0, 80, 17.5] };
-  for (const k of want) if (V[k]) { await ev(v => { HM.pl.x = v[0]; HM.pl.z = v[1]; HM.S.clock = v[2]; HM.pl.hp = 1e7; }, V[k]); await wait(3200); await p.screenshot({ path: SP + "/x_" + k + ".png" }); console.log(k, JSON.stringify(await ev(() => ({ tris: HM.RT.tris, calls: HM.RT.calls })))); }
-  if (want.includes('tomb')) { await ev(() => { HM.enterArea('tomb', { depth: 4 }); }); await wait(1200); await ev(() => { const a = HM.area; const w = a.boxes[20]; HM.pl.hp = 1e7; }); await wait(3000); await p.screenshot({ path: SP + '/x_tomb.png' }); }
-  if (want.includes('boss')) { await ev(() => { HM.enterArea('tomb', { depth: 10 }); }); await wait(1000); await ev(() => { const bo = HM.actors.find(a => a.def.boss); HM.pl.x = bo.x; HM.pl.z = bo.z + 8; HM.pl.hp = 1e7; }); await wait(6000); await p.screenshot({ path: SP + '/x_boss.png' }); }
-  console.log(JSON.stringify(await ev(() => ({ tris: HM.RT.tris, calls: HM.RT.calls })))); console.log('ERRS', [...new Set(errs)].slice(0, 30).join('\n')); await b.close();
+  const b = await launch(), SP = process.argv[2] || '.', want = (process.argv[3] || 'title,skills').split(','), origin = process.argv[4] || 'human';
+  const size = /^(\d+)x(\d+)$/.exec(process.env.HM_VIEW || ''), viewport = size ? { width: +size[1], height: +size[2] } : { width: 1280, height: 720 };
+  const h = await open(b, { tag: 'screens', begin: false, viewport, dir: SP }), { ev, p } = h, shot = async k => { await p.screenshot({ path: SP + '/x_' + k + '.png' }); console.log('wrote', SP + '/x_' + k + '.png'); };
+  if (want.includes('title')) { await p.waitForTimeout(1500); await ev(og => { const c = document.querySelector(`[data-origin="${og}"]`); if (c) c.click(); }, origin); const s = await ev(() => { const cards = [...document.querySelectorAll('#origins .origin')], r = cards.map(c => c.getBoundingClientRect()), bg = document.getElementById('begin').getBoundingClientRect(); return { n: cards.length, on: cards.filter(c => c.classList.contains('on')).length, inView: r.every(q => q.top >= 0 && q.bottom <= innerHeight && q.left >= 0 && q.right <= innerWidth), begin: bg.bottom <= innerHeight && bg.top >= Math.max(...r.map(q => q.bottom)) - 1, overlap: r.some((q, i) => r.some((w, j) => j > i && q.left < w.right && w.left < q.right && q.top < w.bottom && w.top < q.bottom)) }; });
+    ok('title: four bloodline cards, one selected, all on screen, none overlapping, New game below them', s.n === 4 && s.on === 1 && s.inView && s.begin && !s.overlap, s); await shot('title'); }
+  await ev(og => { const c = document.querySelector(`[data-origin="${og}"]`); if (c) c.click(); document.getElementById('begin').click(); }, origin); await h.until(() => HM.RT.started && !!HM.dq, null, 20000); await h.adv(); await h.unpaused();
+  await ev(() => { HM.RT.touch = true; document.getElementById('toasts').style.display = 'none'; HM.pl.inv = 1e6; HM.gainXp(3000); HM.S.sp = 3; });
+  const menu = async tab => { await h.unpaused(); await ev(t => HM.openMenu(t), tab); await p.waitForTimeout(600); const s = await ev(() => { const m = document.getElementById('menu').getBoundingClientRect(), body = document.getElementById('mbody'); return { w: Math.round(m.width), h: Math.round(m.height), inView: m.left >= 0 && m.right <= innerWidth + 1 && m.top >= 0 && m.bottom <= innerHeight + 1, hscroll: body.scrollWidth > body.clientWidth + 2, sections: body.querySelectorAll('section').length }; }); await shot(tab); await ev(() => HM.closeMenu()); return s; };
+  if (want.includes('skills')) { const s = await menu('skills'); const t = await ev(() => { HM.openMenu('skills'); const o = { open: [...document.querySelectorAll('#mbody section:not(.shut) > h2')].map(x => x.textContent.trim().split(' ')[0]), shut: [...document.querySelectorAll('#mbody section.shut h2')].map(x => x.textContent.trim().split(' ')[0]), rows: document.querySelectorAll('#mbody .skill').length }; HM.closeMenu(); return o; });
+    ok('skills menu: fits the window with no sideways scrolling; open trees first, closed ones folded', s.inView && !s.hscroll && t.open.includes('Hunter') && t.open.length + t.shut.length === 5, Object.assign(s, t)); }
+  for (const tab of ['char', 'codex', 'journal', 'map']) if (want.includes(tab)) await menu(tab);
+  if (want.includes('pack')) await menu('inv');
+  if (want.includes('hud')) { await h.square(); await ev(() => { HM.S.clock = 22; HM.addCons('vblood', 1, true); HM.useCons('vblood'); }); await h.die(); await h.awaitTransition(); await h.square(); await p.waitForTimeout(2500); await shot('hud'); }
+  if (want.includes('wolf')) { await h.square(); await ev(() => { HM.S.day = 2; HM.S.clock = 21.5; HM.setForm(true, false); HM.pl.shiftT = 0; }); await p.waitForTimeout(3000); await shot('wolf'); await ev(() => { HM.setForm(false, false); HM.pl.shiftT = 0; HM.S.day = 3; }); }
+  const V = { town: [6, -18, 14], square: [-4, 8, 22], cem: [-140, 44, 0.5], woods: [-40, -120, 23], chapel: [-130, -160, 22], falls: [196, -224, 10], cellar: [160, -207, 15], lake: [-128, 172, 19.3], farm: [34, 222, 9], manor: [234, -50, 21.5], quarry: [150, 176, 23], hollow: [-20, -236, 1], camp: [-228, -66, 20.5], bridge: [194, -34, 12], res: [0, 80, 17.5], gazebo: [13, 15, 12] };
+  for (const k of want) if (V[k]) { await ev(v => { HM.pl.x = v[0]; HM.pl.z = v[1]; HM.S.clock = v[2]; }, V[k]); await p.waitForTimeout(3200); await shot(k); note(k, await ev(() => ({ tris: HM.info.triangles, calls: HM.info.calls, prompt: (HM.findInteract() || {}).label || null }))); }
+  if (want.includes('tomb')) { await ev(() => { HM.enterArea('tomb', { depth: 4 }); }); await p.waitForTimeout(3500); await shot('tomb'); }
+  if (want.includes('boss')) { await ev(() => { HM.enterArea('tomb', { depth: 10 }); }); await p.waitForTimeout(800); await ev(() => { const bo = HM.actors.find(a => a.def.boss); HM.pl.x = bo.x; HM.pl.z = bo.z + 8; }); await p.waitForTimeout(6000); await shot('boss'); }
+  if (want.includes('sleeper')) { await ev(() => { HM.enterArea('tomb', { depth: 20 }); }); await p.waitForTimeout(800); await ev(() => { const d = HM.area.door; HM.pl.x = d.x; HM.pl.z = d.z + 2; }); await p.waitForTimeout(3500); await shot('sleeper'); }
+  await finish(b);
 })();

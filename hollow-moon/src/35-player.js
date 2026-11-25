@@ -217,14 +217,14 @@ function startFeed(n) {
   pl.rot = dirTo(pl, n); n.rot = pl.rot; sfx('bite'); puff(n.x, 1.5, n.z, 8, { c: BLOOD, add: 0.05, sp: 2, life: 0.5, size: 0.2 }); rigEyes(pl.rigH, 2); pl.faceT = 1.5;
   let seen = 0; for (const o of actors) if (o.kind === 'npc' && o !== n && !o.dead && o.rig.g.visible && d2(o, n) < 12 && los(o, n)) { seen++; o.fleeT = 6; } if (seen) { S.exposure = Math.min(100, S.exposure + 14 + seen * 8); toast('Someone saw you.'); }
   if (n.verv && !tr) { vervBurn(); pl.sw = { kind: 'bite', t: 0, dur: 0.4 }; n.fleeT = 8; n.fearDay = S.day; n.fedDay = S.day; S.exposure = Math.min(100, S.exposure + 25); S.stats.feeds++; toast('Vervain. It burns all the way down, you get nothing, and they will remember your face.'); codex('vervain'); return; }
-  pl.feed = { v: n, got: 0 }; n.held = true; n.pose = 'held'; pl.sw = { kind: 'bite', t: 0, dur: 9, hold: true };
+  pl.feed = { v: n, got: 0, auto: !!tr }; n.held = true;                                                                 // the first mouthful in transition was agreed to in so many words: it does not also need the key held n.pose = 'held'; pl.sw = { kind: 'bite', t: 0, dur: 9, hold: true };
 }
 function endFeed(interrupted, quiet) {
   const f = pl.feed; if (!f) return; const n = f.v, fd = $('feed'); pl.feed = null; pl.sw = null; n.held = false; n.pose = null; if (fd) fd.hidden = true; if (n.dead) return; n.dazed = 5; n.fedDay = S.day; S.stats.feeds++;
   if (!interrupted && !quiet) { if (!S.switchOff) S.humanity = Math.min(100, S.humanity + 1); toast('You catch their eye and tell them to forget. They will remember a dizzy spell and nothing else.'); }
 }
 function updFeed(dt) {
-  const f = pl.feed, n = f.v, fd = $('feed'), ff = $('feedfill'); pl.sp = 0; if (!K.e || n.dead) return endFeed(false); const am = Math.min(n.blood, 24 * dt); n.blood -= am; f.got += am;
+  const f = pl.feed, n = f.v, fd = $('feed'), ff = $('feedfill'); pl.sp = 0; if ((!K.e && !f.auto) || n.dead) return endFeed(false); const am = Math.min(n.blood, 24 * dt); n.blood -= am; f.got += am;
   if (S.transition) { if (f.got >= 5) { endFeed(false, true); n.fearDay = S.day; n.fleeT = 6; completeTransition(); } return; }                                 // the first human blood: the change is finished
   pl.blood = Math.min(P.maxBlood, pl.blood + am * 0.6); heal(P.maxHp * 0.035 * dt, true); if (S.diet !== 'human' && f.got > 3) { S.diet = 'human'; recalc(); }
   if (fd) fd.hidden = false; if (ff) ff.style.width = n.blood + '%'; pl.hbT = (pl.hbT || 0) - dt; if (pl.hbT <= 0) { sfx('heart'); pl.hbT = lerp(1.2, 0.42, n.blood / 100); }
