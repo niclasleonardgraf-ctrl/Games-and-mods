@@ -58,7 +58,7 @@ async function vampire(b) {
     T_.reset(); HM.pl.blood = 30; e = T_.foe('feral', 5, 0); const b2 = HM.pl.blood; T_.cast('v_frenzy'); o.dead = { blood: Math.round(HM.pl.blood - b2) };
     T_.reset(); HM.pl.blood = 30; e = T_.foe('wolf', 5, 0); const b3 = HM.pl.blood; T_.cast('v_frenzy'); o.animal = { blood: Math.round(HM.pl.blood - b3), diet: HM.S.diet, compel: HM.P.compelM }; HM.S.diet = 'human'; HM.recalc(); return o; });
   ok('v_frenzy: human blood feeds fully and heals', r.human.blood === 25 && r.human.hurt && r.human.healed && r.human.near, r.human);
-  ok('v_frenzy: vervain in the blood burns the biter; a vampire has nothing to give', r.dosed.blood === 0 && r.dosed.burned && r.dead.blood === 0, r);
+  ok('v_frenzy: vervain in the blood burns the biter; another vampire gives only a thin quarter', r.dosed.blood === 0 && r.dosed.burned && r.dead.blood > 0 && r.dead.blood <= r.human.blood / 3, r);
   ok('v_frenzy: animal blood gives half, and puts the vampire on the weaker diet', r.animal.blood === 13 && r.animal.diet === 'animal' && r.animal.compel === 0.5, r.animal);
   r = await ev(() => { const o = {}; T_.reset(); let e = T_.foe('robber', 5, 0, { free: 1 }); o.human = T_.cast('v_compel') && e.team === 0 && e.fx.charm > 0; o.cost = Math.round(HM.P.maxBlood - HM.pl.blood);
     T_.reset(); e = T_.foe('hunter', 5, 0, { free: 1 }); o.dosed = !T_.cast('v_compel') && e.team === 1 && HM.pl.blood === HM.P.maxBlood; T_.reset(); e = T_.foe('feral', 5, 0, { free: 1 }); o.vampire = !T_.cast('v_compel') && e.team === 1;

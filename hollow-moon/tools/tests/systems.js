@@ -96,7 +96,7 @@ async function play(b) {
   s = await ev(() => { BO.fx.stun = 600; HM.hit(HM.pl, BO, { dmg: 1e12, mat: 'steel', melee: 1 }); const r = { downed: BO.downed, dead: BO.dead, cleared: HM.area.cleared, bar: document.getElementById('bossbar').hidden }; HM.hit(HM.pl, BO, { dmg: 5, mat: 'wood', melee: 1 }); r.dead2 = BO.dead; r.cleared2 = HM.area.cleared; r.slain = !!(HM.S.flags.slain && HM.S.flags.slain.warden); r.drops = HM.drops.length; r.relic = HM.drops.some(d => d.kind === 'item' && d.v.uniq === 'wardblade'); return r; });
   ok('tomb: a keeper who is only downed does not break the seal', s.downed && !s.dead && !s.cleared && s.bar, s);
   ok('tomb: finished, he is slain for good, the seal breaks, and his blade drops', s.dead2 && s.cleared2 && s.slain && s.relic, s);
-  await ev(() => { HM.enterArea('tomb', { depth: 5 }); }); s = await ev(() => ({ who: (HM.actors.find(a => a.def.boss) || {}).type, awake: HM.S.flags.corvinAwake || 0 }));
+  await ev(() => { HM.enterArea('tomb', { depth: 5 }); }); s = await ev(() => ({ who: HM.area.keeper, awake: HM.S.flags.corvinAwake || 0 }));
   ok('tomb: a slain keeper does not come back; another takes the floor', !!s.who && s.who !== 'warden', s);
 
   /* --- up, and into the grave: vampire blood from the pack, a death, a blood bag from the pack --- */
