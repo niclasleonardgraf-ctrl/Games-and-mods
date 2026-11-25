@@ -61,7 +61,8 @@ button:focus-visible{outline:2px solid var(--candle);outline-offset:2px}
 #feed i{display:block;position:relative;height:12px;background:rgba(8,11,18,.7);border:1px solid var(--blood);margin-top:4px}#feedfill{display:block;height:100%;background:var(--blood-hi)}
 #feed i::after{content:"";position:absolute;left:25%;top:-4px;bottom:-4px;width:2px;background:var(--bone)}
 #toasts{left:50%;top:calc(var(--gt) + 64px);transform:translateX(-50%);display:grid;gap:6px;justify-items:center;width:min(92vw,600px);font-family:var(--display);font-size:18px;font-weight:400;letter-spacing:.01em;text-align:center;z-index:7}
-#toasts div{background:rgba(8,11,18,.74);padding:6px 14px;animation:toast 5.2s forwards}
+#toasts div{background:rgba(8,11,18,.74);padding:6px 14px;animation:toast 5.2s forwards;text-wrap:balance}
+#toasts div.keep{background:rgba(8,11,18,.9);box-shadow:inset 0 -1px 0 var(--candle)}   /* a note that says what has just happened to you: it is shown first and stays longer (50-ui toast) */
 #hud:has(~ #menu:not([hidden])) #toasts div{background:var(--sheet);border:1px solid var(--line)}   /* a note raised while the menu is open is drawn over it, on a solid ground */
 @keyframes toast{0%{opacity:0;transform:translateY(-6px)}6%,84%{opacity:1;transform:none}100%{opacity:0}}
 #loot{right:var(--gr);bottom:calc(var(--gb) + 70px);display:grid;gap:3px;justify-items:end;font-size:14px;letter-spacing:.04em}
@@ -202,10 +203,13 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(46px,11vw,92px);li
 @media (max-height:520px) and (orientation:landscape) and (max-width:719px){.origins{grid-template-columns:1fr 1fr}}
 /* the pack's side panel never grows taller than the short screen: its list of numbers scrolls and the buttons stay in view */
 @media (max-height:520px) and (orientation:landscape) and (min-width:641px){.detail{display:flex;flex-direction:column;max-height:calc(100vh - var(--gt) - var(--gb) - 74px);max-height:calc(100dvh - var(--gt) - var(--gb) - 74px)}.detail>*{flex:none}.detail ul{flex:0 1 auto;min-height:0;overflow-y:auto;touch-action:pan-y}}
-/* any phone, either way up: the menu's tabs stay on one row and slide sideways, fading at the right edge where there are more */
+/* any phone, either way up: the menu's tabs stay on one row and slide sideways, fading at the right edge where there are more.
+   A small window with a mouse has no way to slide a row: there the tabs are set closer and wrap onto a second line beside Close, so no tab and no part of the purse is cut off. */
 @media (max-width:640px),(max-height:520px) and (orientation:landscape){
-  #menu{grid-template-columns:minmax(0,1fr)}#mhead{flex-wrap:nowrap;min-width:0}#mtabs{flex-wrap:nowrap;overflow-x:auto;min-width:0;scrollbar-width:none;touch-action:pan-x;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
-  #mtabs::-webkit-scrollbar{display:none}.tab,.purse{flex:none}.purse{padding:0 30px 0 8px}
+  #menu{grid-template-columns:minmax(0,1fr)}#mhead{flex-wrap:nowrap;min-width:0;align-items:flex-start}#mtabs{min-width:0}
+  body.touch #mtabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;touch-action:pan-x;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
+  body.touch #mtabs::-webkit-scrollbar{display:none}body.touch .tab,body.touch .purse{flex:none}body.touch .purse{padding:0 30px 0 8px}
+  body:not(.touch) .tab{padding:6px 8px;letter-spacing:.1em}body:not(.touch) .purse{padding:4px 8px}
 }
 </style>
 

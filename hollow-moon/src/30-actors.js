@@ -61,6 +61,7 @@ function removeActor(a) { const i = actors.indexOf(a); if (i >= 0) actors.splice
 function neutralTo(e) {
   const ai = e.ai; if (!ai || ai.provoked || e.phantom || e.team !== 1) return false;
   if ((e.type === 'wolf' || e.type === 'packrunner' || e.type === 'werewolf') && !e.def.boss && sk('l_alpha') && isWolf()) return true;   // timber wolves and the Falls pack know an alpha
+  if (e.type === 'hunter' && S.species === 'werewolf' && (pl.wolf || S.exposure >= 50)) return false;   // the Council shoots a wolf on sight, and the person too once the town has their description
   const ov = e.def.onlyVs; if (!ov) return false; const sp = S.species;
   return !(ov.includes(sp) || (sp === 'werewolf' && ov.includes('wolf')) || (pl.wolf && (ov.includes('werewolf') || ov.includes('wolf'))) || (S.heretic && ov.includes('heretic')) || (S.original && ov.includes('original')));
 }
@@ -329,7 +330,7 @@ function startAtk(e, name, tgt) {
   else if (k === 'grab') c.tele = telegraph(e.x, e.z, e.rot, { kind: 'line', len: grabDist(A), w: (A.w || 1.2) * 2 }, c.wind, 0xb01030);
   else if (k === 'snap') c.tele = telegraph(e.x, e.z, e.rot, { kind: 'arc', r: (A.range || 2.6) + e.r, arc: A.arc || 1.4 }, c.wind, 0xff8a20);
   else if (k === 'gaze') { c.tele = telegraph(e.x, e.z, e.rot, { kind: 'arc', r: (A.range || 9) + e.r, arc: A.arc || 1 }, c.wind, 0xb070ff); if (tgt === pl && !e.phantom) floatText(e.x, 3.1, e.z, 'Look away', '#c090ff', 13); }
-  else if (k === 'slam') { if (!jump && !A.far) { c.tx = e.x; c.tz = e.z; } c.tele = telegraph(c.tx, c.tz, 0, { kind: 'circle', r: A.r || 3 }, c.wind, A.mat === 'verv' ? 0xb070ff : undefined); } else if (k === 'nova') c.tele = telegraph(e.x, e.z, 0, { kind: 'circle', r: 3 }, c.wind, 0xff3050);
+  else if (k === 'slam') { if (!jump && !A.far) { c.tx = e.x; c.tz = e.z; } c.tele = telegraph(c.tx, c.tz, 0, { kind: 'circle', r: A.r || 3 }, c.wind, A.mat === 'verv' ? 0xb070ff : A.mat === 'wolfsbane' ? 0xffe060 : undefined); } else if (k === 'nova') c.tele = telegraph(e.x, e.z, 0, { kind: 'circle', r: 3 }, c.wind, 0xff3050);
   else if (k === 'tk') c.tele = telegraph(c.tx, c.tz, 0, { kind: 'circle', r: A.r || 2.8 }, c.wind, 0x8a7cff); else if (k === 'boundary') c.tele = telegraph(c.tx, c.tz, 0, { kind: 'circle', r: A.r || 5 }, c.wind, 0xff5a6a);
   else if (k === 'aneurysm') c.tele = telegraph(e.x, e.z, e.rot, { kind: 'line', len: Math.min(A.range || 12, d2(e, tgt) + 1), w: 0.7 }, c.wind, 0xc090ff);
   if (k === 'summon') { sfx(e.fam === 'wolf' ? 'howl' : 'magic'); } if (k === 'blink') puff(e.x, 1.2, e.z, 18, { c: [0.1, 0.05, 0.12], add: 0.2, sp: 2, life: 0.5, size: 0.4, grav: 0 });
@@ -341,7 +342,7 @@ function resolveAtk(e, c) {
       for (const t of foes(e)) if (d2(e, t) < A.range + e.r + t.r && Math.abs(angd(dirTo(e, t), e.rot)) < A.arc / 2) hit(e, t, { dmg, mat, kb: 3, poise: 10, venom: ven }); break;
     case 'lunge': case 'dashchain': c.ph = 'dash'; c.t = 0; c.left = A.dist || 7; c.hitIds = {}; e.sw = { kind: e.rig.kind === 'biped' ? (bite ? 'bite' : 'stab') : 'bite', t: 0, dur: (A.dist || 7) / 28, hold: true }; sfx('blur'); return;
     case 'grab': c.ph = 'dash'; c.t = 0; c.left = grabDist(A); c.hitIds = {}; e.sw = { kind: 'bite', t: 0, dur: 0.3, hold: true }; sfx('blur'); return;
-    case 'slam': if (A.jump || name === 'pounce') { e.x = c.tx; e.z = c.tz; collide(e); } hazard(c.tx, c.tz, A.r || 3, 0, dmg, { team: e.team, src: e, mat, kb: 6, poise: 20, venom: ven, verv: mat === 'verv', onHit: t => { if (t === pl && (name === 'pounce' || A.stun)) addFx(pl, 'stun', A.stun || 0.45); } });   // mat 'verv' + stun: a hunter's vervain grenade (ATK.vgren)
+    case 'slam': if (A.jump || name === 'pounce') { e.x = c.tx; e.z = c.tz; collide(e); } hazard(c.tx, c.tz, A.r || 3, 0, dmg, { team: e.team, src: e, mat, kb: 6, poise: 20, venom: ven, verv: mat === 'verv', bane: mat === 'wolfsbane', onHit: t => { if (t === pl && (name === 'pounce' || A.stun)) addFx(pl, 'stun', A.stun || 0.45); } });   // mat 'verv' + stun: a hunter's vervain grenade (ATK.vgren); mat 'wolfsbane': the one they bring for a wolf (ATK.wgren)
       if (A.multi) for (let i = 0; i < A.multi; i++) { const t = c.tgt, a = R(0, TAU), d = i === 0 ? 0 : R(2, 7); hazard(t.x + Math.sin(a) * d, t.z + Math.cos(a) * d, A.r, 0.7 + i * 0.35, dmg, { team: e.team, src: e, mat: 'magic', pc: MAGIC, col: 0x8a5cff }); } break;
     case 'shoot': { const base = dirTo(e, c.tgt), n = A.n || 1, fire = mat === 'fire', col = A.col || (fire ? 0xff7a20 : rock ? 0x8a8478 : 0x9a6bff), hunted = A.wood && (e.def.verv || e.def.bane);
       for (let i = 0; i < n; i++) { const p = shoot(e, e.x + Math.sin(base) * 0.8, e.z + Math.cos(base) * 0.8, base + (i - (n - 1) / 2) * (A.spread || 0), { spd: A.spd || 15, dmg, mat, col, orb: A.orb != null ? !!A.orb : !(A.wood || rock), tumble: rock, r: rock ? 0.8 : 0.5, kb: rock ? 8 : 2, poise: rock ? 30 : 6, pc: A.wood || rock ? SPARK : fire ? FIRE : [((col >> 16) & 255) / 255, ((col >> 8) & 255) / 255, (col & 255) / 255],
@@ -440,6 +441,8 @@ function wander(e, dt, sp) { const ai = e.ai; if (ai.t <= 0 || !ai.wt) { ai.t = 
 /* ---------------- people ---------------- */
 const TOWNLOOK = { cloth: [0x8a3f3f, 0x3f6690, 0x7a7a3f, 0x86609a, 0x9a9a9a, 0x3a7a66, 0xb07840, 0x6a3555], hair: [0x1a1210, 0x4a2f1a, 0x9a7a44, 0x2a2a2a, 0x8a2f1a, 0xc0b4a0], skin: [0xd3a48a, 0xa5714e, 0xe8c2a4, 0x70492f], pants: [0x1a1c26, 0x2a2420, 0x30343c] };
 let townieN = 0;
+/* who does not run from a wolf. 1: their own kind of secret; they neither run nor tell (a witch, a wolf, the dead and the man who keeps their door). 2: Council; they stand, and they tell. */
+const WOLF_KNOWN = { odette: 1, wren: 1, ambrose: 1, gault: 1, casimir: 1, corvin: 1, hale: 2, bex: 2 };
 function spawnNpc(o) {
   const L = Object.assign({ cloth: pick(TOWNLOOK.cloth), hair: pick(TOWNLOOK.hair), skin: pick(TOWNLOOK.skin), pants: pick(TOWNLOOK.pants), long: chance(0.45) }, o.look || {}), def = { n: o.n, rig: 'human', fam: 'human', look: L, scale: o.scale || 1 }, rig = mkBody(def), n = baseActor('npc', def, rig, o.x, o.z);
   // the Council puts vervain in the town's coffee. Most people drink it; the night owls and one in five of the rest do not.
@@ -448,9 +451,19 @@ function spawnNpc(o) {
 }
 function updNpc(n, dt) {
   if (n.dead) return; if (n.held) { n.sp = 0; return; }
-  if ((n.wps || n.npc.townie) && !(n.fleeT > 0) && d2(n, pl) < 11 && (pl.wolf || n.fearDay === S.day)) n.fleeT = 3;      // nobody stands and talks to a wolf, or to the thing that bit them this morning
-  if (n.fleeT > 0) { n.fleeT -= dt; n.dazed = 0; const a = dirTo(pl, n); mv(n, n.x + Math.sin(a) * 5, n.z + Math.cos(a) * 5, 5.2, dt); return; }
+  /* a wolf in the street. Everyone ordinary runs from it, named or not, and anyone who gets a clear look tells the Council: the same exposure a vampire earns by being seen feeding,
+     once a night for each witness. The wolf only has to be there; whether it bites anyone is the player's doing. Sage smoke or a cloak hides it. */
+  const near = d2(n, pl) < 11, wolfNear = near && pl.wolf && !pl.dead && n.rig.g.visible && !(pl.buff.cloak > 0), who = WOLF_KNOWN[n.npc.id];
+  if (wolfNear && who !== 1 && n.sawWolf !== moonDay() && los(n, pl)) { n.sawWolf = moonDay(); const F = S.flags, first = !F.wolfSeen; F.wolfSeen = moonDay(); S.exposure = Math.min(100, S.exposure + 18); toast(first ? 'Someone saw the wolf. The Council hunts what the town has seen.' : 'Someone saw the wolf.'); }
+  if (!(n.fleeT > 0) && near && (pl.wolf ? !who : (n.wps || n.npc.townie) && n.fearDay === S.day)) n.fleeT = 3;      // nobody stands and talks to a wolf, or to the thing that bit them this morning
+  if (n.fleeT > 0) { n.fleeT -= dt; n.dazed = 0; n.away = 1; n.homeT = 0; const a = dirTo(pl, n); mv(n, n.x + Math.sin(a) * 5, n.z + Math.cos(a) * 5, 5.2, dt); return; }
   if (n.dazed > 0) { n.dazed -= dt; n.sp = 0; n.fx.stun = 0.2; return; }
+  /* someone with a place to stand walks back to it once the fright is over. If a wall is in the way they wait, and are simply there again once nobody is near enough to see. */
+  if (!n.wps && n.away) {
+    const hx = n.npc.x, hz = n.npc.z, ox = n.x, oz = n.z; if (hyp(ox - hx, oz - hz) < 0.5) { n.x = hx; n.z = hz; n.away = 0; n.homeT = 0; n.sp = 0; return; }
+    if (n.homeT > 3) { n.sp = 0; if (d2(n, pl) > 24) { n.x = hx; n.z = hz; n.away = 0; n.homeT = 0; } return; }
+    mv(n, hx, hz, 2.4, dt); if (hyp(n.x - ox, n.z - oz) < 1.2 * dt) n.homeT = (n.homeT || 0) + dt; return;
+  }
   if (!n.wps) { n.sp = 0; if (n.npc.talk && d2(n, pl) < 7 && !n.npc.still) n.rot += angd(dirTo(n, pl), n.rot) * Math.min(1, dt * 4); else if (n.npc.rot != null) n.rot = n.npc.rot; return; }
   if (n.wait > 0) { n.wait -= dt; n.sp = 0; return; }
   if (!n.tg || hyp(n.x - n.tg[0], n.z - n.tg[1]) < 1.2 || n.stuck > 2.5) { n.tg = pick(n.wps); n.wait = n.stuck > 2.5 ? 0 : R(0, 5); n.stuck = 0; return; }
@@ -505,6 +518,6 @@ function updSpawns(dt) {
   // anything the town has seen for what it is gets hunted: vervain, wolfsbane and wooden rounds, and now and then one of the Five
   if (S.species !== 'human' && S.exposure >= 50 && EN.hunter) { squadT -= 1.6; if (squadT <= 0 && actors.filter(e => (e.type === 'hunter' || e.type === 'fivehunter') && !e.dead && !e.phantom).length < 4) { squadT = 45; const a = R(0, TAU), five = EN.fivehunter && isVamp() && chance(0.22) && !actors.some(e => e.type === 'fivehunter' && !e.dead && !e.phantom);
       for (let k = 0; k < 2; k++) { const e = spawnEnemy(k === 0 && five ? 'fivehunter' : 'hunter', pl.x + Math.sin(a) * 42 + k * 2, pl.z + Math.cos(a) * 42, Math.max(3, S.lvl + RI(-1, 1)), { spawned: true }); collide(e); e.ai.provoked = e.ai.hunt = true; aggro(e); }
-      toast(five ? 'The Council has your description. One of the men coming is not Council: he moves like he was made for this.' : 'The Council has your description. Hunters are closing in.'); } }
+      toast(five ? 'The Council has your description. One of the men coming is not Council: he moves like he was made for this.' : S.species === 'werewolf' ? 'The Council knows there is a wolf, and whose face it wears by day. Hunters are closing in with wolfsbane.' : 'The Council has your description. Hunters are closing in.'); } }
   worldEvents();
 }

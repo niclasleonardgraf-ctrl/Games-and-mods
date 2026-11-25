@@ -53,7 +53,8 @@ function buildGlows(a) {
   a.glows.forEach((g, i) => { M.makeScale(g[2], 1, g[2]).setPosition(g[0], 0.07 + (i % 7) * 0.002, g[1]); im.setMatrixAt(i, M); im.setColorAt(i, col.setHex(g[3])); }); im.instanceColor.needsUpdate = true; im.frustumCulled = false; a.group.add(im); a.glowMesh = im;
 }
 function lamp(x, z, c = 0xffa050, i = 1.1, d = 18, y = 3.6) { BA.lights.push({ x, y, z, c, i, d }); }
-function addInter(o) { (BA || RT.area).inter.push(o); return o; }
+/* hands: 1 marks something only hands can do (a lid, a latch, a page, a stem to pick): in wolf form it offers no prompt at all, and using it by any other road does nothing */
+function addInter(o) { if (o.hands) { const l = o.label, f = o.act; o.label = () => pl && pl.wolf ? null : l(); o.act = () => pl && pl.wolf ? undefined : f(); } (BA || RT.area).inter.push(o); return o; }
 
 /* ---------------- overworld ---------------- */
 const ROADS = [
@@ -159,7 +160,7 @@ function buildWorld() {
   const herbZone = (kind, n, x1, z1, x2, z2) => { for (let i = 0, t = 0; i < n && t < 400; t++) { const x = rr(x1, x2), z = rr(z1, z2); if (!freeSpot(x, z, 1)) continue; i++; const id = 'h' + (hid++); herbs[kind].push([x, z, rr(0, 6), 1.2, 0, id]); } };
   herbZone('vervain', 16, -280, -280, 190, -70); herbZone('vervain', 5, -100, 86, 180, 280); herbZone('wolfsbane', 10, 100, -280, 190, -120); herbZone('wolfsbane', 8, -280, 100, -90, 280); herbZone('sage', 12, -90, 120, 180, 280); herbZone('sage', 8, 70, -60, 190, 130);
   for (const kind in herbs) for (const h of herbs[kind]) { const m = place(kind, h[0], h[1], h[2], 1.25, G), id = h[5]; a.glows.push([h[0], h[1], 2.6, kind === 'vervain' ? 0x9a5cff : kind === 'wolfsbane' ? 0xffe060 : 0xd0ffe0]);
-    const it = addInter({ id, x: h[0], z: h[1], r: 2.2, m, label: () => m.visible ? 'Gather ' + CONS[kind].n : null, act: () => { m.visible = false; S.gath[id] = S.day; const n = 1 + (sk('w_herb') > 0 ? 1 : 0) + (chance(0.3) ? 1 : 0); addCons(kind, n); sfx('loot'); herbBurn(kind, n); puff(h[0], 0.6, h[1], 8, { c: GREEN, add: 0.7, sp: 1.5, up: 2, life: 0.6, size: 0.2, grav: 2 }); qEvent('gather', kind, n); } }); a.herbs = a.herbs || []; a.herbs.push(it); }
+    const it = addInter({ id, x: h[0], z: h[1], r: 2.2, hands: 1, m, label: () => m.visible ? 'Gather ' + CONS[kind].n : null, act: () => { m.visible = false; S.gath[id] = S.day; const n = 1 + (sk('w_herb') > 0 ? 1 : 0) + (chance(0.3) ? 1 : 0); addCons(kind, n); sfx('loot'); herbBurn(kind, n); puff(h[0], 0.6, h[1], 8, { c: GREEN, add: 0.7, sp: 1.5, up: 2, life: 0.6, size: 0.2, grav: 2 }); qEvent('gather', kind, n); } }); a.herbs = a.herbs || []; a.herbs.push(it); }
   // ---- wilderness ----
   const tr = { pine: [], pineTall: [], oak: [], birch: [], willow: [] }, bushes = [], rocks = [], boulders = [], stumps = [], logs = [], shrooms = [], grass = [], reeds = [];
   for (let i = 0; i < 3400; i++) { const x = rr(-WS + 6, WS - 6), z = rr(-WS + 6, WS - 6), north = z < -64 && x < 196, east = x > 212; if (!freeSpot(x, z)) continue; if (!north && !east && rnd() < 0.62) continue;
@@ -185,7 +186,7 @@ function herbBurn(kind, n) {
 }
 function mkChest(x, z, id, lvl, big) {
   const rig = mkRig('chest', {}, big ? 1.4 : 1.15); rig.g.position.set(x, 0, z); rig.g.rotation.y = (x * 13 + z * 7) % 6; shadowed(rig.g); BA.group.add(rig.g); addCirc(x, z, 0.7); BA.glows.push([x, z, 4, big ? 0xffc040 : 0xb0a060]);
-  const c = addInter({ id, x, z, r: 2.4, rig, lvl, big, open: false, label: () => c.open || !c.rig.g.visible ? null : 'Open the chest', act: () => openChest(c) }); (BA.chests = BA.chests || []).push(c); return c;
+  const c = addInter({ id, x, z, r: 2.4, hands: 1, rig, lvl, big, open: false, label: () => c.open || !c.rig.g.visible ? null : 'Open the chest', act: () => openChest(c) }); (BA.chests = BA.chests || []).push(c); return c;
 }
 function setChest(c, open) { c.open = open; const lid = c.rig.P.Lid; if (lid) lid.rotation.x = open ? 1.9 : 0; }
 function openChest(c) {
@@ -249,7 +250,7 @@ function genTomb(depth) {
         door.open = true; for (const m of slabs) G.remove(m); for (const l of [a.boxes, a.los]) { const i = l.indexOf(box); if (i >= 0) l.splice(i, 1); } hashArea(a); sfx('open'); sfx('boom'); RT.shake = Math.max(RT.shake, 0.5); ringFx(W(17), dz, 0x8a6cff, 9, 1); puff(W(17), 1.5, dz, 40, { c: ASH, add: 0.1, sp: 3, up: 2, life: 1.2, size: 0.4, grav: 2, spread: 4 }); toast('The seal knows what you carry. Stone grinds on stone, and the air that comes out is two thousand years old.'); } }); a.door = door; } }
   else { let font = depth >= 2 && rnd() < 0.55; rooms.forEach((r, i) => { if (i === 0) return; const n = Math.round(Math.min(7, 1 + Math.floor(r.w * r.h / 11) + Math.floor(depth / 6)) * (mod && mod.count || 1)); for (let k = 0; k < n; k++) { const p = rp(r, 2.5); a.spawns.push({ x: p.x, z: p.z, type: table[Math.floor(rnd() * table.length)], elite: rnd() < Math.min(0.45, 0.04 + depth * 0.012) + (mod && mod.elite || 0) }); }
       if (i > 0 && i < rooms.length - 1 && rnd() < 0.42 + (mod && mod.chest || 0)) { const p = rp(r, 2.2); mkChest(p.x, p.z, 'tc' + i, a.lvl, rnd() < 0.15 + (mod && mod.chest ? 0.2 : 0)); }
-      if (font && i >= 2 && i < rooms.length - 1) { font = false; const p = rc(r); place('fountain', p.x, p.z, 0, 0.7, G); addCirc(p.x, p.z, 1.7); a.glows.push([p.x, p.z, 9, 0xb01020]); lamp(p.x, p.z, 0xff2030, 1.2, 14, 1.5); const f = addInter({ x: p.x, z: p.z, r: 3.2, used: false, label: () => f.used ? null : 'Drink from the blood font', act: () => { f.used = true; heal(P.maxHp); if (S.origin !== 'siphoner') pl.foc = P.maxFoc; if (isVamp()) pl.blood = P.maxBlood; sfx('heal'); ringFx(p.x, p.z, 0xff2030, 5, 0.7); toast(venomed() ? 'Old blood, kept warm by something. It fills you, and it closes nothing while the venom is in you.' : isVamp() ? 'Old blood, kept warm by something. You are whole.' : 'It is only water, here. Somehow. You are whole.'); } }); } }); a.need = Math.ceil(a.spawns.length * 0.7); }
+      if (font && i >= 2 && i < rooms.length - 1) { font = false; const p = rc(r); place('fountain', p.x, p.z, 0, 0.7, G); addCirc(p.x, p.z, 1.7); a.glows.push([p.x, p.z, 9, 0xb01020]); lamp(p.x, p.z, 0xff2030, 1.2, 14, 1.5); const f = addInter({ x: p.x, z: p.z, r: 3.2, hands: 1, used: false, label: () => f.used ? null : 'Drink from the blood font', act: () => { f.used = true; heal(P.maxHp); if (S.origin !== 'siphoner') pl.foc = P.maxFoc; if (isVamp()) pl.blood = P.maxBlood; sfx('heal'); ringFx(p.x, p.z, 0xff2030, 5, 0.7); toast(venomed() ? 'Old blood, kept warm by something. It fills you, and it closes nothing while the venom is in you.' : isVamp() ? 'Old blood, kept warm by something. You are whole.' : 'It is only water, here. Somehow. You are whole.'); } }); } }); a.need = Math.ceil(a.spawns.length * 0.7); }
   a.killed = 0; a.fog = [0x05060a, 0x050a08, 0x0a0606, 0x08050a][Math.floor((depth - 1) / 5) % 4]; buildGlows(a); hashArea(a); BA = null; return a;
 }
 function disposeArea(a) { a.group.traverse(o => { if (o.isInstancedMesh) o.dispose(); }); scene.remove(a.group); }

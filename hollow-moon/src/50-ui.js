@@ -1,9 +1,42 @@
 /* Hollow Moon — interface: HUD, minimap, dialogue, the Use prompt, menus, codex, vendors, touch controls. */
 const GLYPH = { h_gren: '✺', h_wgren: '✽', h_heart: '➹', h_whirl: '⟳', h_volley: '⋙', h_device: '⊚', w_incend: '♨', w_aneur: '✹', w_ward: '◈', w_cloak: '◌', w_motus: '⇗', w_bound: '◯', w_siphon: '⊛', w_desic: '⊘', l_rage: '✸', l_pounce: '↷', l_howl: '≋', v_frenzy: '♥', v_compel: '◉', v_step: '⤳', v_ripper: '◐', v_snap: '✕', v_heart: '❥' };
 const glyph = id => GLYPH[id] || (SK[id] ? SK[id].n.charAt(0) : '?');
-function toast(t) { const box = $('toasts'); if (box.lastChild && box.lastChild.textContent === t) return; const d = el('div', '', t); box.appendChild(d); while (box.children.length > 3) box.firstChild.remove(); setTimeout(() => d.remove(), 5200); }
+/* Notes at the top of the screen: toast(text, opts). Three show at once and the rest wait in a line, so nothing raised in a busy moment is lost.
+   opts.keep (or a plain true): the note says what has just happened to the player. It goes first, stays longer, and sends a small notice back into the line when the stack is full.
+   Small notices are the diary and codex lines (or opts.low): they go last, and codex notices raised together become one line.
+   A note is never drawn over a banner. Notes that would be are held until the banner has gone. */
+const TOASTQ = [], TOAST_ON = 3, TOAST_QMAX = 9;
+function toast(t, opts) {
+  if (t == null || t === '') return; t = String(t); const box = $('toasts'), now = performance.now(), keep = opts === true || !!(opts && opts.keep), cdx = !keep && t.startsWith('Codex: '), low = !keep && (cdx || !!(opts && opts.low) || t === 'The diary has a new page.');
+  for (const d of box.children) if (d.textContent === t && now - d._t0 < d._ms * 0.8) return;                                  /* that is on the screen already */
+  const same = TOASTQ.indexOf(TOASTQ.find(e => e.t === t)); if (same >= 0) { if (!keep || TOASTQ[same].keep) return; TOASTQ.splice(same, 1); }   /* and that is already waiting (a note that now matters moves up) */
+  if (cdx) { const join = (base, set) => { const have = base.slice(7).split(' · '), more = t.slice(7).split(' · ').filter(x => !have.includes(x)), m = more.length ? base + ' · ' + more.join(' · ') : base; if (m.length > 84) return false; set(m); return true; };
+    const up = [...box.children].find(d => d._e.cdx && now - d._t0 < 1200); if (up && join(up.textContent, m => { up.textContent = up._e.t = m; })) return toastSettle();
+    const w = TOASTQ.find(e => e.cdx); if (w && join(w.t, m => { w.t = m; })) return; }
+  let i = TOASTQ.length; if (keep) { i = 0; while (i < TOASTQ.length && TOASTQ[i].keep) i++; } else if (!low) while (i > 0 && TOASTQ[i - 1].low) i--;
+  TOASTQ.splice(i, 0, { t, keep, low, cdx });
+  while (TOASTQ.length > TOAST_QMAX) { let j = TOASTQ.findIndex(e => e.low); if (j < 0) j = TOASTQ.findIndex(e => !e.keep); TOASTQ.splice(Math.max(j, 0), 1); }   /* the line is only so long: small notices are the first to go */
+  toastPump();
+}
+/* is the stack clear of a banner that is up, and (when it holds more than one note) of the middle of the screen, where the player stands */
+function toastFits() { const box = $('toasts'), r = box.getBoundingClientRect(), b = $('banner'); if (!r.height) return true;
+  if (!b.hidden) { const rb = b.getBoundingClientRect(); if (rb.height && r.bottom > rb.top - 6 && r.top < rb.bottom + 6) return false; }
+  return box.children.length < 2 || r.bottom <= innerHeight * 0.52; }
+/* take a note off the screen. back: it goes to the front of its own part of the line, to be shown again (a small notice that has had its time is simply dropped) */
+function toastOff(d, back) { clearTimeout(d._tm); d.remove(); const e = d._e; if (!back || (e.low && performance.now() - d._t0 > 2500)) return; let i = 0; if (!e.keep) while (i < TOASTQ.length && (TOASTQ[i].keep || (e.low && !TOASTQ[i].low))) i++; TOASTQ.splice(i, 0, e); }
+/* a banner has come up, or a note has grown: whatever no longer fits steps back into the line, from the bottom of the stack */
+function toastSettle() { const box = $('toasts'); while (box.lastChild && !toastFits()) toastOff(box.lastChild, true); }
+/* show whatever is waiting, for as long as there is room */
+function toastPump() { const box = $('toasts');
+  while (TOASTQ.length) { const e = TOASTQ[0], kids = [...box.children];
+    if (kids.length >= TOAST_ON) { const y = e.keep && (kids.reverse().find(d => d._e.low) || kids.find(d => !d._e.keep)); if (!y) break; toastOff(y, true); }   /* a full stack makes room for a note that matters: the newest small notice steps back, or failing that the newest ordinary one */
+    const d = el('div', e.keep ? 'keep' : '', e.t), ms = e.keep ? 8400 : e.low ? 4200 : 5200; d._e = e; d._t0 = performance.now(); d._ms = ms; d.style.animationDuration = ms + 'ms';
+    box.insertBefore(d, e.keep ? [...box.children].find(x => !x._e.keep) || null : null);
+    if (e.keep) while (box.lastChild !== d && !box.lastChild._e.keep && !toastFits()) toastOff(box.lastChild, true);                                      /* and it takes the room it needs from the notes under it */
+    if (!toastFits()) { d.remove(); break; }
+    TOASTQ.shift(); d._tm = setTimeout(() => { d.remove(); toastPump(); }, ms); } }
 function lootToast(t, col) { const box = $('loot'), d = el('div', '', t); d.style.color = col; box.appendChild(d); while (box.children.length > 5) box.firstChild.remove(); setTimeout(() => d.remove(), 4200); }
-let bannerT = 0; function banner(t, s) { $('bannerT').textContent = t; $('bannerS').textContent = s || ''; const b = $('banner'); b.hidden = false; b.classList.remove('go'); void b.offsetWidth; b.classList.add('go'); clearTimeout(bannerT); bannerT = setTimeout(() => b.hidden = true, 3600); }
+let bannerT = 0; function banner(t, s) { $('bannerT').textContent = t; $('bannerS').textContent = s || ''; const b = $('banner'); b.hidden = false; b.classList.remove('go'); void b.offsetWidth; b.classList.add('go'); toastSettle(); clearTimeout(bannerT); bannerT = setTimeout(() => { b.hidden = true; toastPump(); }, 3600); }
 function zoneBanner(z) { $('zone').textContent = z.n + (z.safe ? '' : ' · Lv ' + z.lvl); if (!z.safe && z.id !== 'wild') banner(z.n, 'Enemy level ' + z.lvl + '+'); }
 function showBoss(e) { $('bossbar').hidden = false; $('bossname').textContent = e.name; $('bosssub').textContent = e.def.sub || ''; } function hideBoss() { $('bossbar').hidden = true; }
 /* what a character is, in a word or two. Works on the live save and on one read back from storage (the Continue button). */
