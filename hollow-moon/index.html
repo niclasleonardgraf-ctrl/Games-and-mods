@@ -166,26 +166,27 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(46px,11vw,92px);li
   #title{padding-top:max(4vh,24px)}.sub{font-size:16px;margin:6px 0 12px}.looks{margin-bottom:12px}.looks .big{padding:9px 11px;font-size:13px;letter-spacing:.1em;margin:0}.pick{font-size:11px}.origin{padding:6px 8px 7px}.origin b{font-size:17px}.origin span{font-size:12.5px;line-height:1.25}
   #prompt{white-space:normal;width:max-content;font-size:13px;line-height:1.25}#hud:has(#bossbar:not([hidden])) #quests{display:none}
   /* the boss bar goes under both top corners, not between them, and notes go under it; loot lines sit above the Use prompt */
-  #bossbar{top:calc(var(--gt) + 240px)}#hud:has(#bossbar:not([hidden])) #toasts{top:calc(var(--gt) + 300px)}body.touch #loot{bottom:calc(var(--gb) + 296px)}}
+  #moonline{max-width:36vw}#bossbar{top:calc(var(--gt) + 240px)}#hud:has(#bossbar:not([hidden])) #toasts{top:calc(var(--gt) + 300px)}body.touch #loot{bottom:calc(var(--gb) + 296px)}}
 @media (max-height:520px){#quests{display:none}#toasts{top:calc(var(--gt) + 40px)}}
 /* a narrow window that is not a phone: notes keep off the bars in the top-left corner */
 @media (min-width:641px) and (max-width:899px) and (min-height:521px){#toasts{top:calc(var(--gt) + 240px)}}
 @media (min-width:900px) and (max-width:1179px) and (min-height:521px){#toasts{left:calc(var(--gl) + 308px);right:calc(var(--gr) + 150px);width:auto;transform:none}}
-/* a phone on its side, or any short wide window. The clock, day and zone sit beside a smaller map with Menu under it, so that corner ends above the pads.
+/* a phone on its side, or any short wide window. The clock, day and zone, then Menu, then a smaller map sit in one row, so that corner ends above the pads however short the screen is.
    The objective is two lines under the bars. Notes and the boss bar get the top edge between the two corners. Use prompt, loot and the feeding bar sit beside the pads. */
 @media (max-height:520px) and (orientation:landscape){
-  :root{--lw:clamp(190px,30vw,250px)}
+  :root{--lw:clamp(170px,27vw,250px);--tw:clamp(96px,16vw,132px);--mw:76px}
   #left{width:var(--lw);gap:6px}#vitals{width:100%}#lvl{width:38px;height:38px;font-size:18px}
   #quests{display:block}.q{display:none}.q:first-child{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
   .q b,.q span{display:inline;font-size:13px;line-height:1.25}.q b{font-size:15px;margin-right:6px}
-  #tr{grid-template-columns:auto 76px;column-gap:8px}
-  #mini{grid-column:2;grid-row:1;width:76px;height:76px}#tMenu{grid-column:2;grid-row:2;margin-top:1px}
-  #trtxt{display:grid;gap:2px;justify-items:end;align-content:start;grid-column:1;grid-row:1/span 2;max-width:132px}
-  #clock{font-size:17px}#moonline{max-width:132px}
-  #toasts,#bossbar{left:calc(var(--gl) + var(--lw) + 10px);right:calc(var(--gr) + 226px);width:auto;transform:none}
+  #tr{grid-template-columns:auto auto var(--mw);column-gap:8px;align-items:start}
+  #trtxt{display:grid;gap:2px;justify-items:end;align-content:start;grid-column:1;grid-row:1;max-width:var(--tw)}
+  #tMenu{grid-column:2;grid-row:1;margin-top:0}body.touch #tMenu{min-width:44px;padding:0 5px}
+  #mini{grid-column:3;grid-row:1;width:var(--mw);height:var(--mw)}
+  #clock{font-size:17px}#moonline{max-width:var(--tw)}
+  #toasts,#bossbar{left:calc(var(--gl) + var(--lw) + 10px);right:calc(var(--gr) + var(--tw) + var(--mw) + 78px);width:auto;transform:none}
   #toasts{top:var(--gt);font-size:15px;gap:4px}#toasts div{padding:4px 10px}#hud:has(~ #menu:not([hidden])) #toasts{top:calc(var(--gt) + 62px)}
   #bossbar{top:var(--gt)}#bossname{font-size:18px}#hud:has(#bossbar:not([hidden])) #toasts{top:calc(var(--gt) + 54px)}
-  #banner{top:30%}#bannerT{font-size:34px}
+  #bannerT{font-size:30px}body.touch #banner{width:max(200px,calc(100vw - 2*(var(--gr) + 244px)))}
   body.touch #prompt,body.touch #loot,body.touch #feed{left:auto;right:calc(var(--gr) + 244px);transform:none}
   body.touch #prompt{bottom:calc(var(--gb) + 46px);white-space:normal;width:max-content;max-width:min(300px,calc(100vw - var(--gl) - var(--gr) - 252px));font-size:13px;line-height:1.25}
   body.touch #loot{bottom:calc(var(--gb) + 92px)}body.touch #feed{bottom:calc(var(--gb) + 6px);width:min(40vw,300px)}
@@ -197,6 +198,7 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(46px,11vw,92px);li
   #title .go{position:sticky;bottom:0;padding:10px 0 calc(var(--gb) - 8px);background:linear-gradient(rgba(6,8,14,0),rgba(6,8,14,.92) 14px)}
   .fine{margin-top:2px;font-size:10px}
 }
+@media (max-height:340px) and (orientation:landscape){:root{--mw:60px}}
 @media (max-height:520px) and (orientation:landscape) and (max-width:719px){.origins{grid-template-columns:1fr 1fr}}
 /* the pack's side panel never grows taller than the short screen: its list of numbers scrolls and the buttons stay in view */
 @media (max-height:520px) and (orientation:landscape) and (min-width:641px){.detail{display:flex;flex-direction:column;max-height:calc(100vh - var(--gt) - var(--gb) - 74px);max-height:calc(100dvh - var(--gt) - var(--gb) - 74px)}.detail>*{flex:none}.detail ul{flex:0 1 auto;min-height:0;overflow-y:auto;touch-action:pan-y}}
