@@ -94,7 +94,7 @@ function hudStatus() {
   if (typeof sysStatus === 'function') { for (const l of sysStatus()) if (l.indexOf('In transition') !== 0) st.push(l === 'Wolf' ? 'Wolf form' : l); }   // everything 40-systems keeps a clock on; the transition has a line of its own
   else { if (S.venomUntil > now) st.push((S.original ? 'Venom fever ' : 'Werewolf venom ') + hrs(S.venomUntil)); if (S.curseUntil > now) st.push("Hunter's Curse " + hrs(S.curseUntil)); if (f.lodged > 0) st.push('Wood lodged'); if (f.wolfsbane > 0) st.push('Wolfsbane'); if (pl.wolf) st.push('Wolf form');
     if (P.desic) st.push(['', 'Starving', 'Weakening', 'Desiccating'][P.desic] || 'Desiccating'); else if (vamp && pl.blood <= 0) st.push('Starving'); if (S.switchOff) st.push('Humanity off'); if (vamp && S.diet === 'animal') st.push('Animal blood'); if (F.vblood) st.push('Vampire blood in you'); if (F.hblood) st.push('Blood of the First in you'); }
-  if (vamp) { if (S.exposure >= 50) st.push('Hunted'); else if (S.exposure >= 20) st.push('Suspected'); }
+  if (vamp || S.species !== 'human') { if (S.exposure >= 50) st.push('Hunted'); else if (S.exposure >= 20) st.push('Suspected'); }
   if (b.coatV > 0) st.push('Vervain blade ' + Math.ceil(b.coatV) + 's'); if (b.coatW > 0) st.push('Wolfsbane blade ' + Math.ceil(b.coatW) + 's'); if (b.ward > 0) st.push('Ward ' + Math.round(b.ward)); if (b.cloak > 0) st.push('Cloaked ' + Math.ceil(b.cloak) + 's'); if (b.fury > 0) st.push('Fury ' + Math.ceil(b.fury) + 's');
   if (b.slayerN) st.push('Momentum ×' + b.slayerN); if (b.riposte > 0) st.push('Riposte'); if (b.burger > 0 && !vamp) st.push('Fed');
   return st;

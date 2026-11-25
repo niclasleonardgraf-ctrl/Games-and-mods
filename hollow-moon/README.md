@@ -21,6 +21,7 @@ Open `index.html` in a browser (it loads three.js from a CDN, so you need to be 
 | Pull out a wooden bolt lodged in you | hold E | hold USE |
 | Change shape (a hybrid, or a werewolf wearing a moonlight ring on the full moon) | G | SHIFT |
 | Pack, skills, journal, codex, map | Tab (M for map) | Menu |
+| Zoom | mouse wheel | pinch |
 
 As a wolf you bite (attack) and pounce (heavy). Weapons, shots, blocking, spells, draughts and conversation need hands.
 
@@ -38,7 +39,7 @@ You choose a bloodline on the title screen. It is what you were born with and it
 Every change is a decision, and the game asks before the ones that cannot be undone.
 
 - **Vampire.** Drinking vampire blood only heals you. Die within a day with it in your system and you wake after dark, in transition: not a vampire yet, and the sun only hurts your eyes. Drink human blood within 24 game hours (a blood bag, or a person) and it is done. Do nothing and you die the ordinary way: the story goes back to the hour before you died. After that: wood, fire, vervain and the sun hurt you; you need a daylight ring from a witch, who can take the spell back out of it; you cannot enter a home until you are asked in; human blood feeds you fully and animal blood half as well; most of the town drinks vervain, and their blood burns; a wooden bolt stays lodged, and nothing heals, until you pull it out; with no blood left you weaken by stages and desiccate. The humanity switch is a switch.
-- **Werewolf.** Once the curse is awake you are stronger and faster than a person and less than a vampire, more as the moon fills and when you are angry. On full-moon nights you turn into a wolf whether you like it or not, and stay one until dawn: a real wolf, with a venomous bite. Chain yourself in the Lockwood cellar before moonrise, or earn a kyanite moonlight ring, which gives you the choice. Wolfsbane is your vervain. Silver does nothing to anyone.
+- **Werewolf.** Once the curse is awake you are stronger and faster than a person and less than a vampire, more as the moon fills and when you are angry. On full-moon nights you turn into a wolf whether you like it or not, and stay one until dawn: a real wolf, with a venomous bite. Chain yourself in the Lockwood cellar before moonrise, or earn a kyanite moonlight ring, which gives you the choice. Run loose where people can see and they will run and talk, and the Council comes for you with wolfsbane. Wolfsbane is your vervain. Silver does nothing to anyone.
 - **Hybrid.** A werewolf who dies with the blood of Corvin, the Original hybrid, in their system wakes in transition and needs the blood of the human doppelgänger to finish it; ordinary blood does nothing. A hybrid has both trees, changes shape at will, walks in the sun, is venomous in either shape, and is burned by vervain and wolfsbane both. You are sired to Corvin and cannot raise a hand to him until a hundred willing changes break the bond.
 - **Original.** Late, and by an old spell at Coven Hollow. Only white oak ends you.
 - **Human again.** The Cure is twenty floors under Fell's Church. One dose, and whoever takes it can never be turned again.
@@ -81,4 +82,4 @@ python3 -m http.server 8765 &
 cd /tmp && node /path/to/hollow-moon/tools/tests/origins.js /tmp/out
 ```
 
-`origins.js` each bloodline through its transformation · `systems.js` quests, combat, menus, the Tomb, turning, saving, old saves · `abilities.js` every active skill, and the town's services · `balance.js` the species side by side, pacing, level 1 fights · `soak.js` every enemy against each kind of player · `screens.js` screenshots. Each prints one line per assertion and exits non-zero if any failed.
+`origins.js` each bloodline through its transformation · `story.js` the story's conversations as each bloodline · `systems.js` quests, combat, menus, the Tomb, turning, saving, old saves · `abilities.js` every active skill, and the town's services · `balance.js` the species side by side, pacing, level 1 fights · `soak.js` every enemy against each kind of player · `screens.js` screenshots. Each prints one line per assertion and exits non-zero if any failed.

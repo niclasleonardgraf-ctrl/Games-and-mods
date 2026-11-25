@@ -237,9 +237,10 @@ async function wolf(b) {
   s = await ev(() => { HM.addCons('draught', 1, true); HM.pl.hp = HM.P.maxHp * 0.5; return { wolf: HM.pl.wolf, tog: HM.toggleShift(), still: HM.pl.wolf, why: HM.shiftAllowed(), wcls: HM.P.wcls, wmat: HM.P.wmat, venom: HM.P.venom, cons: HM.useCons('draught'), moons: (HM.S.flags.moons || 0) - M0, status: HM.status, talk: (() => { const n = HM.actors.find(a => a.npc && a.npc.id === 'marnie'); return n ? HM.actorInteract(n, 1) : null; })() }; });
   ok('full moon: the wolf cannot be put away (G refused)', s.tog === false && s.still === true && /moon decides/.test(s.why), s);
   ok('full moon: a real wolf: bites, venom in the bite, no items, no talking', s.wcls === 'wolf' && s.wmat === 'bite' && s.venom > 0 && s.cons === false && s.talk === null, s);
-  ok('full moon: counted as a moon survived, and the HUD says wolf form', s.moons === 1 && s.status.includes('Wolf form'), s);
+  ok('full moon: not counted until the night is over, and the HUD says wolf form', s.moons === 0 && s.status.includes('Wolf form'), s);
   await ev(() => { HM.S.day = 3; HM.S.clock = 6.2; });
   ok('full moon: released at dawn', await h.until(() => HM.pl.wolf === false, null, 20000), await ev(() => ({ wolf: HM.pl.wolf, clock: HM.S.clock, day: HM.S.day })));
+  ok('full moon: counted as a moon survived once dawn comes', await ev(() => (HM.S.flags.moons || 0) - M0 === 1), await ev(() => HM.S.flags.moons));
   s = await ev(() => { HM.S.day = 10; HM.S.clock = 14; const r = { tonight: HM.fullTonight() }; HM.S.eq.ring = HM.mkUniq('moonring', HM.S.lvl); HM.recalc(); HM.S.clock = 21; r.forcedWithRing = HM.shiftAllowed(); return r; });
   await h.run(0.3);
   s.wolfWithRing = await ev(() => HM.pl.wolf); s.tog = await ev(() => { HM.pl.shiftT = 0; HM.pl.shiftCd = 0; const t = HM.toggleShift(); const w = HM.pl.wolf; HM.pl.shiftT = 0; HM.pl.shiftCd = 0; HM.toggleShift(); HM.pl.shiftT = 0; HM.pl.shiftCd = 0; return t && w && !HM.pl.wolf; });
