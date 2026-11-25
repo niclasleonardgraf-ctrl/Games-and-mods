@@ -4,7 +4,8 @@ let lookI = { skin: 0, hair: 0, coat: 0, long: 0 }, originSel = 'human';   // th
 const curLook = () => ({ skin: LOOKS.skin[lookI.skin], hair: LOOKS.hair[lookI.hair], coat: LOOKS.coat[lookI.coat], long: !!lookI.long });
 keyHandlers.push(k => {
   audioInit();
-  if (dq) { if (k === 'e' || k === 'enter' || k === ' ') advDlg(); else if (k.length === 1 && '123456'.includes(k)) { if (performance.now() - (dq.at || 0) > 350) pickChoice(+k - 1); } return true; }   // while someone is talking, no key is a blow
+  if (dq) { if (k === 'e' || k === 'enter' || k === ' ') advDlg(); else if (k.length === 1 && '1234567890'.includes(k)) { if (performance.now() - (dq.at || 0) > 350) pickChoice((+k + 9) % 10); }   // 1 to 9 take the first nine answers and 0 the tenth; anything past that is in the list to be clicked
+    else if (k === 'arrowdown' || k === 'arrowup') $('dch').scrollTop += k === 'arrowdown' ? 120 : -120; return true; }   // while someone is talking, no key is a blow
   if (!RT.started || RT.blk) return true;
   if (RT.menu) { if (k === 'tab' || k === 'escape' || k === 'i') closeMenu(); else if (k === 'm' && RT.menu !== 'vendor') { RT.menu = 'map'; renderMenu(); } return true; }
   if (k === 'tab' || k === 'i') { openMenu(); return true; } if (k === 'm') { openMenu('map'); return true; } if (k === 'escape') { openMenu('system'); return true; }

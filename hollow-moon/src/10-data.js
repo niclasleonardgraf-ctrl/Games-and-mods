@@ -12,17 +12,18 @@ const ORIGINS = {
   wolf: { n: 'Werewolf gene', d: "Lockwood blood on your father's side: you carry the werewolf curse, asleep. It wakes the first time you take a human life and never sleeps again, so until you choose otherwise you only knock people out.", start: { weapon: 'bat', armor: 'jacket', cons: { draught: 1, burger: 3 } } },
 };
 
-/* silver does nothing to anyone in this town: there are no silver weapons. mat is the damage type (see WEAK). */
+/* silver does nothing to anyone in this town: there are no silver weapons. mat is the damage type (see WEAK).
+   'staff' and 'robe' are old ids, kept so saves and vendor lists still work: no witch here carries a staff or wears a robe. They are a walking stick and a dark coat. */
 const BASES = {
   stake: { n: 'Oak Stake', slot: 'weapon', cls: 'fast', dmg: 8, mat: 'wood', model: 'wStake' }, dagger: { n: 'Hunting Knife', slot: 'weapon', cls: 'fast', dmg: 9, mat: 'steel', model: 'wDagger' },
   stiletto: { n: 'Stiletto', slot: 'weapon', cls: 'fast', dmg: 9.6, mat: 'steel', model: 'wDagger', min: 5 }, bat: { n: 'Ash Bat', slot: 'weapon', cls: 'med', dmg: 12, mat: 'wood', model: 'wBat' },
   sword: { n: 'Sabre', slot: 'weapon', cls: 'med', dmg: 13, mat: 'steel', model: 'wSword', min: 3 }, cavalry: { n: 'Cavalry Sabre', slot: 'weapon', cls: 'med', dmg: 13.8, mat: 'steel', model: 'wSword', min: 8 },
   axe: { n: "Woodsman's Axe", slot: 'weapon', cls: 'slow', dmg: 18, mat: 'steel', model: 'wAxe', min: 2 }, great: { n: 'Greatsword', slot: 'weapon', cls: 'slow', dmg: 21, mat: 'steel', model: 'wGreat', min: 9 },
-  maul: { n: 'Ironwood Maul', slot: 'weapon', cls: 'slow', dmg: 20, mat: 'wood', model: 'wBat', min: 7 }, staff: { n: 'Hawthorn Staff', slot: 'weapon', cls: 'staff', dmg: 10, mat: 'magic', model: 'wStaff' },
+  maul: { n: 'Ironwood Maul', slot: 'weapon', cls: 'slow', dmg: 20, mat: 'wood', model: 'wBat', min: 7 }, staff: { n: 'Hawthorn Walking Stick', slot: 'weapon', cls: 'staff', dmg: 10, mat: 'magic', model: 'wStaff' },
   xbow: { n: 'Crossbow', slot: 'ranged', dmg: 17, cd: 1.3, mat: 'wood', model: 'crossbow', pspd: 36 }, revolver: { n: 'Revolver', slot: 'ranged', dmg: 11, cd: 0.62, mat: 'wood', model: 'revolver', pspd: 52, min: 5 },
   knives: { n: 'Throwing Knives', slot: 'ranged', dmg: 7.5, cd: 0.38, mat: 'steel', model: 'wDagger', pspd: 30 },
   jacket: { n: 'Leather Jacket', slot: 'armor', def: 7, hp: 12 }, coat: { n: 'Long Coat', slot: 'armor', def: 5, hp: 8, st: 12 }, vest: { n: "Hunter's Vest", slot: 'armor', def: 10, hp: 18, min: 4 },
-  robe: { n: 'Coven Robe', slot: 'armor', def: 4, hp: 6, fo: 22 }, mail: { n: 'Council Mail', slot: 'armor', def: 15, hp: 26, min: 9 },
+  robe: { n: 'Long Dark Coat', slot: 'armor', def: 4, hp: 6, fo: 22 }, mail: { n: 'Council Mail', slot: 'armor', def: 15, hp: 26, min: 9 },
   ring: { n: 'Ring', slot: 'ring' }, signet: { n: 'Signet', slot: 'ring' }, band: { n: 'Iron Band', slot: 'ring' }, amulet: { n: 'Amulet', slot: 'amulet' }, locket: { n: 'Locket', slot: 'amulet' }, talisman: { n: 'Talisman', slot: 'amulet' },
 };
 /* melee move sets: [duration, damage mult] per combo hit; heavy attack. The player's current set is P.wcls (recalc): 'wolf' in wolf form, and a staff in hands
@@ -48,11 +49,11 @@ const AFFD = { dmg: '+{v}% damage', crit: '+{v}% critical chance', critd: '+{v}%
 /* relics. bound: cannot be sold or salvaged (see isBound). The effects in d are implemented in recalc / daylightSafe / immuneCompel / playerDeath unless noted. */
 const UNIQ = {
   daylight: { n: 'Daylight Ring', base: 'ring', bound: 1, aff: [['hp', 30]], d: 'Lapis lazuli, spelled by a witch for one vampire. While you wear it the sun does not burn you. It cannot be sold, and the witch who made it can unmake it from anywhere.' },
-  moonring: { n: 'Moonlight Ring', base: 'band', aff: [['hp', 40], ['def', 12]], d: "Black kyanite. A werewolf who wears it is not forced to turn on the full moon and may choose to. On that night the wolf's strength and its venom are yours in either shape." },
+  moonring: { n: 'Moonlight Ring', base: 'band', aff: [['hp', 40], ['def', 12]], d: "Black kyanite. A werewolf who wears it is not forced to turn on the full moon and may choose to. On that night the wolf's strength and its venom are yours in either shape. There is no second stone: a werewolf cannot sell it." },   // bound while S.species === 'werewolf' (isBound)
   whiteoak: { n: 'White Oak Stake', base: 'stake', mult: 1.25, aff: [['crit', 10]], d: 'Carved from the old Wickery Bridge sign. Against anything else it is only wood. Through the heart of a downed Original it is the end of him, and of everyone he ever made. It burns up when it is used that way.' },
   watch: { n: "Founder's Pocket Watch", base: 'amulet', aff: [['mf', 25], ['crit', 6]], d: 'A compass spelled into a watch case in 1864. Vampires and hybrids show on your map. If you are one, the needle only spins.' },
   vlocket: { n: "Elspeth's Vervain Locket", base: 'locket', aff: [['hp', 30], ['wil', 3]], d: 'Packed with vervain. Whoever wears it cannot be compelled. It burns a vampire who tries to put it on.' },
-  fring: { n: "Founder's Ring", base: 'signet', aff: [['hp', 25], ['def', 8]], d: 'Brings back an ordinary human killed by something supernatural. It does nothing for a witch, a werewolf, a hunter of the Five or the dead, and nothing against an ordinary death. Each time it keeps a little of you: 2% of your health, for good.' },
+  fring: { n: "Founder's Ring", base: 'signet', aff: [['hp', 25], ['def', 8]], d: 'Brings back an ordinary human killed by something supernatural. It does nothing for a witch, a werewolf, a hunter of the Five or the dead, and nothing against an ordinary death. Each time it keeps a little of your mind: for some hours after you see people who are not there, and it is longer every time.' },
   halebow: { n: "Hale's Crossbow", base: 'xbow', mult: 1.4, aff: [['vsV', 30], ['crit', 8]], d: 'Thirty years of practice in the stock. Its wooden bolts pierce.' },
   corvin: { n: "Corvin's Signet", base: 'signet', aff: [['ls', 6], ['dmg', 18], ['critd', 30]], d: 'A thousand years on one hand. On a vampire it adds 1% damage for every night since they turned, up to 20%.' },
   wardblade: { n: "Warden's Oath", base: 'great', mult: 1.35, aff: [['def', 20], ['dmg', 12]], d: 'Heavy blows send a shockwave through the stone. A heavy blade takes heads.' },
@@ -77,7 +78,7 @@ const CONS = {
   ashdagger: { n: 'White Oak Ash Dagger', d: 'A silver dagger dipped in white oak ash. In the heart of an Original it holds him as dead until it is drawn out. It kills any ordinary vampire who uses it, and it does nothing at all to a hybrid.', price: 0, icon: '◆', quest: 1 },
   oakwood: { n: 'Wickery Bridge Sign', d: 'The sign from the old bridge. White oak, like the rest of it was. Someone who knows wood could carve a stake from this.', price: 0, icon: '◆', quest: 1 },
   kyanite: { n: 'Black Kyanite', d: 'A witch can spell it into a moonlight ring.', price: 0, icon: '◆', quest: 1 }, moonstone: { n: 'Moonstone', d: 'It gives its holder nothing. It binds a curse, and it is one part of the ritual that breaks one.', price: 0, icon: '◆', quest: 1 },
-  talisman: { n: 'Thorne Talisman', d: "Emeline Thorne's crystal. It opens what she sealed.", price: 0, icon: '◆', quest: 1 },
+  talisman: { n: 'Thorne Talisman', d: "Emeline Thorne's crystal. It opens what a Thorne sealed, however long ago.", price: 0, icon: '◆', quest: 1 },
   cure: { n: 'The Cure', d: 'One dose. Makes a vampire human for good: whoever takes it can never be turned again.', price: 0, icon: '♦', quest: 1 }, lapisq: { n: 'Lapis Lazuli', d: 'A witch can bind the sun into it.', price: 0, icon: '◆', quest: 1 },
   locket: { n: 'Tarnished Locket', d: 'Engraved: E.F., 1864. It smells faintly of vervain.', price: 0, icon: '◆', quest: 1 },
 };
@@ -101,7 +102,7 @@ const SK = {
   h_second: { tree: 'hunter', n: 'Second Wind', max: 3, req: 12, d: r => `Falling below 30% health heals ${10 + 10 * r}% once every 90 seconds.` },
   h_slayer: { tree: 'hunter', n: "Slayer's Momentum", max: 5, req: 15, d: r => `Each kill grants +${2 + r}% damage for 10 seconds, stacking five times.` },
   // h_device: affects enemies of fam vampire|hybrid|original (Originals for 60% of the time) and fam wolf (either shape); never fam human|witch|animal|spirit. If isVamp() || isWolf() || S.origin === 'wolf' the player is stunned for the same time.
-  h_device: { tree: 'hunter', n: "The Founders' Device", max: 3, req: 18, act: 1, cd: 240, cost: { st: 40 }, d: r => `Wind the Device. Every vampire, hybrid and werewolf within 30 metres drops, helpless, for ${4 + r} seconds; an Original is up again a little sooner. Humans and witches hear nothing. If you are one of them, or only carry the wolf gene, it drops you too.` },
+  h_device: { tree: 'hunter', n: "The Founders' Device", max: 3, req: 18, act: 1, cd: 240, cost: { st: 40 }, d: r => `Wind the Device. Every vampire, hybrid and werewolf within 30 metres drops, helpless, for ${4 + r} seconds; an Original is up again a little sooner. If you are a vampire, a hybrid or a werewolf yourself, or only carry the wolf gene, it drops you too. Humans and witches hear nothing.` },
   // h_five: immunity lives in immuneCompel(); the damage is folded into P.vsV by recalc (do not multiply again in hit); S.flags.mark is counted in qEvent('kill').
   h_five: { tree: 'hunter', n: 'Brotherhood of the Five', max: 1, req: 25, ok: () => S.origin === 'human' && S.species === 'human' && !S.transition, okD: 'Only an ordinary human can carry the mark.', d: () => `Nobody can compel you, not even an Original. The Hunter's Mark grows up your arm: +10% damage to vampires, hybrids and Originals, and 1% more for every two you kill, up to +50%. A Founder's Ring stops working for you. If you ever turn, the mark is gone.` },
 
@@ -153,7 +154,7 @@ const SK = {
   v_heal: { tree: 'vampire', n: 'Healing Factor', max: 5, req: 0, d: r => `Regenerate ${(0.4 * r).toFixed(1)}% of your health every second while you have blood. Half as fast on animal blood. It stops while wood is lodged in you, and under vervain or werewolf venom.` },
   v_blur: { tree: 'vampire', n: 'Blur', max: 3, req: 0, d: r => `Your dodge travels ${20 * r}% further${r >= 3 ? ' and strikes everything you pass through' : ''}.` },
   // v_frenzy: fam human|witch: full; fam animal|wolf|hybrid: half heal and blood, and S.diet = 'animal' for fam animal; fam vampire|original|spirit: damage only. def.verv target: no blood, player takes 10% max health and fx.verv 6 s.
-  v_frenzy: { tree: 'vampire', n: 'Feeding Frenzy', max: 3, req: 0, act: 1, cd: 8, cost: {}, d: r => `Leap up to 10 metres onto an enemy and feed: ${180 + 40 * r}% damage. Human blood heals 14% of your health and restores ${20 + 5 * r} blood. Animal and werewolf blood gives half. Vampires and spirits give nothing, and vervain in the blood burns you instead.` },
+  v_frenzy: { tree: 'vampire', n: 'Feeding Frenzy', max: 3, req: 0, act: 1, cd: 8, cost: {}, d: r => `Leap up to 10 metres onto an enemy and feed: ${180 + 40 * r}% damage. Human blood heals 14% of your health and restores ${20 + 5 * r} blood. Animal and werewolf blood gives half, another vampire's a quarter. The starved dead of the tomb and spirits give nothing, and vervain in the blood burns you instead.` },
   // v_compel: allowed only on fam human without def.verv / def.five. With S.original && sk('o_compel'): also fam vampire|hybrid without fx.verv, for half the time; never fam original. Everything else: float "IMMUNE" (or "VERVAIN") and refund.
   v_compel: { tree: 'vampire', n: 'Compulsion', max: 3, req: 3, act: 1, cd: 22, cost: { bl: 18 }, d: r => `Catch the eye of a human within 11 metres and they fight for you for ${8 + 4 * r} seconds, half that if you live on animal blood. It fails on anyone with vervain in them, and it has never worked on witches, werewolves, the Five, spirits or other vampires. A keeper only stands still for 3 seconds.` },
   // v_step: a straight dash (collide() each step, a streak not smoke); target aimTarget(15).
@@ -181,7 +182,7 @@ const SK = {
 const TREES = {
   hunter: { n: 'Hunter', d: 'Stakes, vervain and nerve. Open to anyone.', shut: () => '' },
   witch: { n: 'Witch', d: 'Spells cost focus. Cast with too little and it comes out of you instead, starting with the nose.', shut: () => S.origin === 'siphoner' ? 'You became a vampire without your siphoning. That should not be possible.' : S.origin !== 'witch' ? 'Magic is inherited. It is not in your blood.' : S.species !== 'human' ? 'A witch who becomes a vampire loses her magic for good.' : 'The craft is asleep in you. Odette Thorne could wake it.' },
-  wolf: { n: 'Werewolf', d: "Strength, speed and healing below a vampire's, rising with the moon and with rage. The wolf comes out on the full moon whether you like it or not. G changes your shape when you are allowed to choose.", shut: () => S.origin !== 'wolf' ? 'The curse is inherited. A bite does not pass it on.' : S.species === 'vampire' ? 'The gene never woke, and now it never will.' : 'The curse is asleep. It wakes with the first human life you take.' },
+  wolf: { n: 'Werewolf', d: "Strength, speed and healing below a vampire's, rising with the moon and with rage. The wolf comes out on the full moon whether you like it or not. G changes your shape when you are allowed to choose.", shut: () => S.origin !== 'wolf' ? 'The curse is inherited. A bite does not pass it on.' : S.species === 'vampire' ? 'The curse sleeps on under the vampire. Only one man ever woke it after he died, and became both.' : 'The curse is asleep. It wakes with the first human life you take.' },
   vampire: { n: 'Vampire', d: 'Blood is strength. Wood, fire, vervain and the sun are the price.', shut: () => S.transition ? 'You are in transition. Nothing here is yours until you feed.' : S.flags.cured ? 'You took the Cure. You can never be turned again.' : 'Only the dead may learn this.' },
   original: { n: 'Original', d: 'The first of a line. Only white oak ends you.', shut: () => 'There were only ever a handful of these, and all of them are a thousand years old.' },
 };
@@ -197,7 +198,7 @@ const ascCost = r => 4 + r * 3 + Math.floor(r * r * 0.35);
    snap     neck-snap grab: on hit stun the player for `stun` seconds (a human player takes dmg x 1.6 instead)
    gaze     telegraphed compulsion, no damage: if the player is inside the cone, facing the attacker and !immuneCompel(e.def.original), set pl.fx.charm = `charm` seconds
    tk       telekinetic throw: an unseen shove; knock the player back `kb` metres
-   far      slam centred on the target's position instead of the attacker's
+   far      slam centred on the target's position instead of the attacker's (with mat 'verv' it is a vervain grenade: vervain on a vampire or hybrid player, and `stun` seconds)
    boundary a circle the player cannot leave for `root` seconds if still inside when it closes; no damage
    aneurysm pain infliction: on hit stun `stun` seconds; on a vampire, hybrid or werewolf player also lock that tree's skills for the stun; fam spirit attackers use it only on vampires
    vs       only chosen when S.species is in the list
@@ -213,6 +214,8 @@ const ATK = {
   fan: { kind: 'shoot', range: 16, wind: 0.7, rec: 0.6, dmg: 0.8, cd: 5, n: 7, spread: 0.2, spd: 13, col: 0x8a6cff }, nova: { kind: 'nova', range: 14, wind: 0.9, rec: 0.8, dmg: 0.9, cd: 8, n: 16, spd: 10, col: 0x8a6cff },
   blink: { kind: 'blink', range: 16, min: 5, wind: 0.25, rec: 0.15, cd: 5 }, summon: { kind: 'summon', range: 30, wind: 1, rec: 0.6, cd: 16, n: 2 }, stab: { kind: 'melee', range: 2.3, arc: 1.2, wind: 0.4, rec: 0.5, dmg: 1.1, cd: 1.4 },
   howl: { kind: 'summon', range: 30, wind: 1.1, rec: 0.5, cd: 24, n: 2 },
+  /* the Council's hunters: a vervain grenade lobbed at a vampire or hybrid (never wasted on anyone else). A slam on the target's spot; resolveAtk adds the vervain and the short stun. */
+  vgren: { kind: 'slam', range: 13, min: 5, r: 3.4, wind: 0.95, rec: 0.7, dmg: 0.8, cd: 11, mat: 'verv', far: 1, stun: 0.8, vs: ['vampire', 'hybrid'] },
   /* werewolves */
   wbite: { kind: 'lunge', range: 7, min: 1.5, dist: 7, w: 1.4, wind: 0.4, rec: 0.7, dmg: 1.15, cd: 2.4, mat: 'bite', venom: 1 }, pounce: { kind: 'slam', range: 11, min: 4, r: 3, wind: 0.7, rec: 0.9, dmg: 1.4, cd: 5.5, jump: 1, mat: 'bite', venom: 1 },
   /* vampires, hybrids, Originals: speed, hands, teeth, eyes */
@@ -227,10 +230,12 @@ const ATK = {
    · full exists only while fullMoon() && isNight() · need: an S.flags key that must be set before the type may spawn · venom its bite is werewolf venom · original ordinary "death" only
    desiccates it; only a White Oak Stake kills · hybrid werewolf and vampire both (no sun damage, wolfsbane hurts too) · line: the Original whose death kills it · five one of the Brotherhood
    (cannot be compelled; a vampire who kills one is cursed) · verv vervain in the blood (cannot be compelled, burns a feeder) · eyes emissive eye colour · desic lies desiccated until someone living
-   comes close · addHp/addDmg scale what its summon calls · pl plural for notices. Vampire looks carry no weapon: hands and teeth. */
+   comes close · addHp/addDmg scale what its summon calls · pl plural for notices. Vampire looks carry no weapon: hands and teeth.
+   · immortal (the Sleeper only): older than the Originals and not one of them. He fights and falls like one (fam and original stay set for that), but white oak and the ash dagger
+   are nothing to him and no line hangs on him: isImmortal() in 30-actors. */
 const EN = {
   robber: { n: 'Grave Robber', rig: 'human', fam: 'human', hp: 36, dmg: 8, spd: 4.6, xp: 10, poise: 20, atk: ['slash'], look: { cloth: 0x5a5040, pants: 0x2a2620, hat: 1, w: 'wBat' }, gold: 1.5 },
-  wolf: { n: 'Timber Wolf', pl: 'Timber Wolves', rig: 'wolf', fam: 'animal', hp: 28, dmg: 9, spd: 7.4, xp: 9, poise: 14, atk: ['bite'], strafe: 1, r: 0.6, tint: { fur: 0x6a6a70, furDark: 0x3a3a40 } },
+  wolf: { n: 'Timber Wolf', pl: 'Timber Wolves', rig: 'wolf', fam: 'animal', hp: 28, dmg: 11, spd: 7.4, xp: 9, poise: 14, atk: ['bite'], strafe: 1, r: 0.6, tint: { fur: 0x6a6a70, furDark: 0x3a3a40 } },   // dmg 11: a pack of three costs a careless new arrival a bit more than a fifth of their health
   deer: { n: 'Deer', pl: 'Deer', rig: 'deer', fam: 'animal', hp: 20, dmg: 0, spd: 8, xp: 3, poise: 5, atk: [], peaceful: 1, r: 0.6 },
   feral: { n: 'Newborn Vampire', rig: 'human', fam: 'vampire', line: 'corvin', hp: 46, dmg: 11, spd: 6.1, xp: 14, poise: 22, atk: ['claw', 'grab'], look: { cloth: 0x3a3a44, pants: 0x1a1a20, skin: 0xb8b0a8, hair: 0x201818, torn: 1 } },
   tombvamp: { n: 'Tomb Vampire', rig: 'human', fam: 'vampire', hp: 50, dmg: 11, spd: 5.4, xp: 15, poise: 26, atk: ['grab', 'claw'], desic: 1, look: { cloth: 0x4a4438, pants: 0x2a2620, skin: 0x8c8880, hair: 0x4a4640, torn: 1, long: 1 } },
@@ -239,20 +244,20 @@ const EN = {
   thrall: { n: 'Sired Fledgling', rig: 'human', fam: 'vampire', line: 'corvin', hp: 34, dmg: 9, spd: 6.4, xp: 8, poise: 12, atk: ['claw'], look: { cloth: 0x302830, pants: 0x1a1a20, skin: 0xa8a098 } },
   cultist: { n: 'Hollow Cultist', rig: 'human', fam: 'witch', hp: 40, dmg: 12, spd: 4.2, xp: 15, poise: 16, atk: ['firebolt'], ranged: 1, look: { cloth: 0x2a2038, pants: 0x18141c, hood: 1, w: 'wStaff' } },
   warlock: { n: 'Coven Warlock', rig: 'human', fam: 'witch', hp: 76, dmg: 16, spd: 4.2, xp: 30, poise: 26, atk: ['firebolt', 'tk', 'boundary', 'aneurysm'], ranged: 1, look: { cloth: 0x501828, pants: 0x18141c, hood: 1, w: 'wStaff' }, gold: 2 },
-  shade: { n: 'Shade', rig: 'shade', fam: 'spirit', hp: 38, dmg: 12, spd: 5.2, xp: 16, poise: 10, atk: ['touch'], float: 1 },
+  shade: { n: 'Restless Spirit', rig: 'shade', fam: 'spirit', hp: 38, dmg: 12, spd: 5.2, xp: 16, poise: 10, atk: ['touch'], float: 1 },
   werewolf: { n: 'Werewolf', pl: 'Werewolves', rig: 'wolf', fam: 'wolf', full: 1, venom: 1, eyes: 0xffd040, hp: 170, dmg: 23, spd: 8.2, xp: 60, poise: 80, atk: ['wbite', 'pounce', 'charge'], strafe: 1, r: 0.85, scale: 1.5, tint: { fur: 0x3c3834, furDark: 0x1c1a18 }, gold: 2 },
   packrunner: { n: 'Falls Pack Runner', rig: 'human', fam: 'wolf', onlyVs: ['vampire', 'hybrid'], eyes: 0xffd040, hp: 68, dmg: 14, spd: 5.8, xp: 22, poise: 36, atk: ['slash', 'lunge'], strafe: 1, look: { cloth: 0x5a3a2a, pants: 0x2a3040, hair: 0x2a1c12, w: 'wAxe' }, gold: 1.5 },
   hybrid: { n: 'Sired Hybrid', rig: 'human', fam: 'hybrid', hybrid: 1, venom: 1, need: 'corvinAwake', line: 'corvin', eyes: 0xffc020, hp: 110, dmg: 18, spd: 6.8, xp: 44, poise: 50, atk: ['wbite', 'claw3', 'lunge'], strafe: 1, look: { cloth: 0x2a3a2a, pants: 0x14161a, skin: 0xcabcae, hair: 0x2a1c12, coat: 1 }, gold: 2 },
-  hunter: { n: 'Council Hunter', rig: 'human', fam: 'human', onlyVs: ['vampire', 'hybrid'], verv: 1, hp: 74, dmg: 14, spd: 5, xp: 22, poise: 34, atk: ['xbolt', 'stab'], ranged: 1, look: { cloth: 0x4a4230, pants: 0x1c1a16, hat: 1, w: 'crossbow', armor: 1 } },
-  fivehunter: { n: 'Hunter of the Five', pl: 'Hunters of the Five', rig: 'human', fam: 'human', five: 1, verv: 1, onlyVs: ['vampire', 'hybrid'], hp: 140, dmg: 19, spd: 6, xp: 70, poise: 70, atk: ['xbolt', 'stab', 'lunge'], ranged: 1, scale: 1.06, look: { cloth: 0x2c2c2c, pants: 0x1a1a1a, hair: 0x15100e, w: 'crossbow', armor: 1 }, gold: 3 },
+  hunter: { n: 'Council Hunter', rig: 'human', fam: 'human', onlyVs: ['vampire', 'hybrid'], verv: 1, hp: 74, dmg: 14, spd: 5, xp: 22, poise: 34, atk: ['xbolt', 'stab', 'vgren'], ranged: 1, look: { cloth: 0x4a4230, pants: 0x1c1a16, hat: 1, w: 'crossbow', armor: 1 } },
+  fivehunter: { n: 'Hunter of the Five', pl: 'Hunters of the Five', rig: 'human', fam: 'human', five: 1, verv: 1, onlyVs: ['vampire', 'hybrid'], hp: 140, dmg: 19, spd: 6, xp: 70, poise: 70, atk: ['xbolt', 'stab', 'lunge', 'vgren'], ranged: 1, scale: 1.06, look: { cloth: 0x2c2c2c, pants: 0x1a1a1a, hair: 0x15100e, w: 'crossbow', armor: 1 }, gold: 3 },
   /* bosses */
   warden: { n: 'The Warden', boss: 1, rig: 'human', fam: 'vampire', ring: 1, hp: 620, dmg: 20, spd: 5, xp: 400, poise: 160, scale: 1.7, atk: ['gslash', 'slam', 'charge', 'grab'], look: { cloth: 0x2a2c34, pants: 0x14161c, skin: 0x9a9690, hair: 0x101010, armor: 1, w: 'wGreat' }, r: 0.9, sub: "Sealed under Fell's Church since 1864" },
   corvin: { n: 'Corvin, the First', boss: 1, rig: 'human', fam: 'original', original: 1, hybrid: 1, venom: 1, weak: { wolfsbane: 1.3 }, eyes: 0xffc020, hp: 900, dmg: 23, spd: 6.8, xp: 900, poise: 160, scale: 1.35, atk: ['dashchain', 'claw3', 'wbite', 'grab', 'gaze', 'debris', 'summon'], add: 'thrall', look: { cloth: 0x5a0a14, pants: 0x0c0c10, skin: 0xe0d8d0, hair: 0xb89a5a, coat: 1 }, sub: 'The Original hybrid. A thousand years old' },
   alpha: { n: 'Old Tobias, the Alpha', boss: 1, rig: 'wolf', fam: 'wolf', full: 1, venom: 1, eyes: 0xffd040, hp: 560, dmg: 20, spd: 7.8, xp: 500, poise: 150, scale: 1.9, atk: ['wbite', 'pounce', 'charge', 'howl'], add: 'werewolf', addHp: 0.35, addDmg: 0.7, r: 1.1, tint: { fur: 0x8a8680, furDark: 0x4a4844 }, sub: 'Alpha of the Falls pack' },
   ambrose: { n: 'Ambrose Varga', boss: 1, rig: 'human', fam: 'vampire', line: 'corvin', hp: 700, dmg: 21, spd: 6.8, xp: 700, poise: 130, scale: 1.2, atk: ['dashchain', 'claw3', 'snap', 'grab'], look: { cloth: 0x6a1019, pants: 0x0c0c10, skin: 0xeadccb, hair: 0xc9c2b0, coat: 1 }, sub: "Turned in 1864. Of Corvin's line" },
   lenore: { n: 'Mother Lenore', boss: 1, rig: 'human', fam: 'vampire', line: 'corvin', hp: 600, dmg: 19, spd: 6.2, xp: 520, poise: 120, scale: 1.25, atk: ['claw3', 'grab', 'dashchain', 'debris', 'summon'], add: 'feral', look: { cloth: 0x1a2a22, pants: 0x101014, skin: 0xd0d8c8, hair: 0x808880, long: 1, cape: 1 }, sub: 'Matron of the quarry nest' },
-  matriarch: { n: 'The Hundred', boss: 1, rig: 'shade', fam: 'spirit', despell: 1, hp: 640, dmg: 21, spd: 5.4, xp: 600, poise: 100, scale: 1.7, atk: ['bolt3', 'nova', 'summon', 'blink', 'quake', 'aneurysm'], add: 'shade', float: 1, sub: 'A hundred burned witches, one voice' },
-  sleeper: { n: 'The Sleeper', boss: 1, rig: 'human', fam: 'original', original: 1, desic: 1, hp: 1000, dmg: 25, spd: 5.6, xp: 1600, poise: 180, scale: 1.3, atk: ['grab', 'claw3', 'slam', 'debris', 'gaze', 'dashchain'], look: { cloth: 0x3a3630, pants: 0x24211c, skin: 0x7c7870, hair: 0x5a564e, long: 1, torn: 1 }, sub: 'Sealed in with the Cure. Two thousand years without a drop' },
+  matriarch: { n: 'The Hundred', boss: 1, rig: 'shade', fam: 'spirit', hp: 640, dmg: 21, spd: 5.4, xp: 600, poise: 100, scale: 1.7, atk: ['firebolt', 'tk', 'boundary', 'quake', 'summon', 'blink', 'aneurysm'], add: 'shade', float: 1, sub: 'A hundred burned witches, one voice' },
+  sleeper: { n: 'The Sleeper', boss: 1, rig: 'human', fam: 'original', original: 1, immortal: 1, desic: 1, hp: 1000, dmg: 25, spd: 5.6, xp: 1600, poise: 180, scale: 1.3, atk: ['grab', 'claw3', 'slam', 'debris', 'gaze', 'dashchain'], look: { cloth: 0x3a3630, pants: 0x24211c, skin: 0x7c7870, hair: 0x5a564e, long: 1, torn: 1 }, sub: 'Sealed in with the Cure. Two thousand years without a drop' },
   casimir: { n: 'Casimir', boss: 1, rig: 'human', fam: 'original', original: 1, ring: 1, hp: 950, dmg: 24, spd: 7, xp: 1200, poise: 170, scale: 1.3, atk: ['dashchain', 'claw3', 'snap', 'grab', 'gaze', 'debris'], look: { cloth: 0x1a1c24, pants: 0x0e0e12, skin: 0xe2d6c8, hair: 0x2a1c12, coat: 1 }, sub: "An Original. Corvin's elder brother" },
 };
 /* damage multipliers by enemy family and damage type (o.mat); anything missing is 1. Silver is not a type: it does nothing to anyone. 'wolfsbane' is the tenth type, for the
@@ -272,7 +277,7 @@ const ELITE = [['Swift', e => { e.spdM = 1.3; }], ['Hulking', e => { e.maxHp *= 
 
 /* ---------------- geography ---------------- */
 const POI = [
-  { id: 'town', n: 'Mystic Falls', x: -6, z: 22 }, { id: 'cem', n: 'Old Cemetery', x: -104, z: 40 }, { id: 'chapel', n: 'Fell Chapel', x: -130, z: -146 }, { id: 'hollow', n: 'Coven Hollow', x: -20, z: -226 },
+  { id: 'town', n: 'Mystic Falls', x: -6, z: 22 }, { id: 'cem', n: 'Old Cemetery', x: -104, z: 40 }, { id: 'chapel', n: "Fell's Church", x: -130, z: -146 }, { id: 'hollow', n: 'Coven Hollow', x: -20, z: -226 },
   { id: 'falls', n: 'The Falls', x: 178, z: -200 }, { id: 'bridge', n: 'Wickery Bridge', x: 186, z: -40 }, { id: 'manor', n: 'Varga Manor', x: 221, z: -45 }, { id: 'quarry', n: 'Blackridge Quarry', x: 128, z: 168 },
   { id: 'farm', n: 'Abel Farm', x: 14, z: 196 }, { id: 'lake', n: 'Dunham Lake', x: -118, z: 160 }, { id: 'camp', n: "Hunters' Camp", x: -214, z: -70 },
 ];
@@ -281,7 +286,7 @@ const POI = [
 const ZONES = [
   { id: 'town', n: 'Mystic Falls', lvl: 1, r: [-72, -62, 82, 128], safe: 1 }, { id: 'camp', n: "Hunters' Camp", lvl: 5, c: [-230, -70, 24], safe: 1 },
   { id: 'cem', n: 'Old Cemetery', lvl: 2, r: [-196, -2, -104, 82], day: ['robber'], night: ['feral', 'feral', 'shade'], max: 5 },
-  { id: 'chapel', n: 'Fell Chapel Ruins', lvl: 6, c: [-130, -170, 36], day: ['cultist', 'robber'], night: ['cultist', 'shade', 'tombvamp', 'feral'], max: 5 },
+  { id: 'chapel', n: "Fell's Church Ruins", lvl: 6, c: [-130, -170, 36], day: ['cultist', 'robber'], night: ['cultist', 'shade', 'tombvamp', 'feral'], max: 5 },
   { id: 'hollow', n: 'Coven Hollow', lvl: 12, c: [-20, -245, 36], day: ['shade', 'cultist'], night: ['shade', 'warlock', 'shade'], max: 6 },
   { id: 'falls', n: 'The Falls', lvl: 9, c: [190, -226, 52], day: ['wolf', 'deer', 'packrunner'], night: ['packrunner', 'wolf', 'packrunner'], full: ['werewolf', 'werewolf', 'wolf'], max: 5 },
   { id: 'quarry', n: 'Blackridge Quarry', lvl: 14, c: [150, 185, 50], day: ['robber'], night: ['stalker', 'elder', 'feral'], max: 7 },

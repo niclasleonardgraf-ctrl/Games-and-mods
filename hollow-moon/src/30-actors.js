@@ -26,6 +26,8 @@ function baseActor(kind, def, rig, x, z) { return { id: AID++, kind, def, fam: d
 
 /* families. The undead (vampire, hybrid, Original) only stay dead for the right reasons: see fall(). */
 const isOrig = e => e.fam === 'original' || !!e.def.original, isHyb = e => e.fam === 'hybrid' || !!e.def.hybrid;
+/* the Sleeper is no Original. He was immortal a thousand years before the white oak grew: he can be put down, and nothing the player owns kills him or holds him. */
+const isImmortal = e => !!(e && e.def && (e.def.immortal || e.type === 'sleeper'));
 const undead = e => e.fam === 'vampire' || e.fam === 'hybrid' || e.fam === 'original';
 const baneHurts = e => e.fam === 'wolf' || isHyb(e), mortalPerson = e => e.fam === 'human' || e.fam === 'witch', wolfShape = e => e.fam === 'wolf' && e.rig.kind === 'quad';
 const personLife = e => mortalPerson(e) || e.fam === 'wolf';   // a human life, for the curse's purposes: a werewolf is a person, in either shape. The dead do not count.
@@ -123,9 +125,9 @@ function poseDead(a, dt) {
 /* ---------------- damage ---------------- */
 const FAMFX = { vampire: BLOOD, original: BLOOD, hybrid: BLOOD, human: BLOOD, witch: BLOOD, wolf: BLOOD, animal: BLOOD, spirit: ICE };
 /* does this blow end one of the undead for good? A vampire: wood in the heart, fire, the sun, the head, the heart torn out, werewolf venom.
-   A hybrid: the head or the heart, nothing else. An Original: white oak through the heart, and that is the whole list. */
+   A hybrid: the head or the heart, nothing else. An Original: white oak through the heart, and that is the whole list. The Sleeper: nothing at all. */
 function lethalTo(e, o) {
-  const m = o.mat, L = o.lethal; if (isOrig(e)) return L === 'whiteoak';
+  const m = o.mat, L = o.lethal; if (isImmortal(e)) return false; if (isOrig(e)) return L === 'whiteoak';
   if (L === 'heart' || L === 'head' || L === 'desic') return true; if (isHyb(e)) return !!o.heavy && m === 'steel';
   return L === 'stake' || L === 'whiteoak' || m === 'wood' || m === 'whiteoak' || m === 'fire' || m === 'sun' || m === 'venom' || (!!o.heavy && m === 'steel');
 }
@@ -135,7 +137,7 @@ function hit(src, tgt, o) {
   if (tgt.kind === 'npc' || tgt.ko || (src && src.phantom)) return 0;
   const fromP = src === pl, ours = fromP || !src || src.team === 0;
   if (tgt.phantom) { if (ours) vanish(tgt, true); return 0; }
-  if (tgt.downed) { if (ours && lethalTo(tgt, o)) { trueDeath(tgt, src, o); return o.dmg; } if (fromP && !o.dot && RT.time - (tgt.hintAt || -9) > 1.6) { tgt.hintAt = RT.time; floatText(tgt.x, 1.7, tgt.z, isOrig(tgt) ? 'Only white oak' : isHyb(tgt) ? 'The head or the heart' : 'Wood, fire or the head', '#b8c0d0', 12); } return 0; }
+  if (tgt.downed) { if (ours && lethalTo(tgt, o)) { trueDeath(tgt, src, o); return o.dmg; } if (fromP && !o.dot && RT.time - (tgt.hintAt || -9) > 1.6) { tgt.hintAt = RT.time; floatText(tgt.x, 1.7, tgt.z, isImmortal(tgt) ? 'Nothing ends him' : isOrig(tgt) ? 'Only white oak' : isHyb(tgt) ? 'The head or the heart' : 'Wood, fire or the head', '#b8c0d0', 12); } return 0; }
   // a hybrid made from his blood cannot raise a hand to the sire until a hundred willing turns have broken the bond
   if (fromP && isHybrid() && S.sire && tgt.type === S.sire && !((S.flags.shifts || 0) >= 100)) { if (RT.time - (RT.sireAt || -9) > 2.5) { RT.sireAt = RT.time; floatText(pl.x, 2.9, pl.z, 'SIRED', '#ffd24a', 16); toast('Your hand will not finish the blow. You owe him the end of the pain, and the debt holds you.'); } return 0; }
   let d = o.dmg, crit = false; const fam = tgt.fam, W = WEAK[fam] || {}, dw = tgt.def.weak, m = o.mat, vv = undead(tgt), bw = baneHurts(tgt), wpn = !o.spell && !o.dot;
@@ -160,7 +162,8 @@ function hit(src, tgt, o) {
   if (vv && (m === 'verv' || o.verv || (fromP && wpn && pl.buff.coatV > 0))) { if (!(tgt.fx.verv > 0)) floatText(tgt.x, 2.9, tgt.z, 'VERVAIN', '#c090ff', 13); addFx(tgt, 'verv', 6); addFx(tgt, 'sear', 3, d * 0.1); }
   if (bw && (m === 'wolfsbane' || o.bane || (fromP && wpn && pl.buff.coatW > 0))) { if (!(tgt.fx.wolfsbane > 0)) floatText(tgt.x, 2.9, tgt.z, 'WOLFSBANE', '#ffe060', 13); addFx(tgt, 'wolfsbane', 6); addFx(tgt, 'sear', 3, d * 0.1); }
   // werewolf venom: an enemy's venomous bite; the player's bite whenever P.venom says it carries any (a wolf, a hybrid, a moonlight ring on the full moon); the Alpha's Fang
-  if (o.venom) venomOn(tgt, d * 0.3, 8); else if (fromP && wpn) { if (m === 'bite') { if (P.venom > 0) venomOn(tgt, d * P.venom, 8); } else if (o.melee && !pl.wolf && S.eq.weapon && S.eq.weapon.uniq === 'alphafang') venomOn(tgt, d * 0.6, 6); }
+  // (o.pvenom: a blow that is a bite in either shape, such as a pounce, so a ring wearer or a hybrid on two legs can deliver what P.venom promises)
+  if (o.venom) venomOn(tgt, d * 0.3, 8); else if (fromP && wpn) { if (m === 'bite' || (o.pvenom && P.venom > 0)) { if (P.venom > 0) venomOn(tgt, d * P.venom, 8); } else if (o.melee && !pl.wolf && S.eq.weapon && S.eq.weapon.uniq === 'alphafang') venomOn(tgt, d * 0.6, 6); }
   if (fromP) {
     const ls = P.ls || 0; if (ls > 0 && !o.noLs && !noMend()) heal(d * ls / 100, true); if (P.burn > 0 && !o.dot) addFx(tgt, 'burn', 3, P.burn * 0.5);
     if (P.rageGain > 0 && wpn) pl.rage = Math.min(100, (pl.rage || 0) + 3 * P.rageGain); if (pl.buff.cloak > 0 && !o.dot) pl.buff.cloak = 0;
@@ -182,12 +185,14 @@ function fall(e, src, o) {
   die(e, src);
 }
 function trueDeath(e, src, o) {
+  if (isImmortal(e)) { if (!e.downed && !e.dead) downEnemy(e, src); return; }   // whoever asks: he only lies still
   const m = o.mat, L = o.lethal; e.burnt = m === 'fire' || m === 'sun' || (L === 'whiteoak' && isOrig(e));
   if (L === 'whiteoak' && isOrig(e)) { const w = S.eq.weapon; RT.flashV = 0.4; RT.shake = 0.8; sfx('fire'); sfx('boom'); ringFx(e.x, e.z, 0xffb060, 10, 1); puff(e.x, 1, e.z, 60, { c: FIRE, add: 1, sp: 4, up: 5, life: 1.1, size: 0.4, grav: -1, spread: 0.6 });
     if (w && w.uniq === 'whiteoak' && !w.indestructible) { S.eq.weapon = null; recalc(); refreshGear(); toast('The white oak catches with him and burns to nothing in your hand.'); } }
   else if (e.burnt) { puff(e.x, 1, e.z, 26, { c: FIRE, add: 1, sp: 2.5, up: 3.5, life: 0.8, size: 0.34, grav: -1, spread: 0.4 }); sfx('fire'); }
   else if (!L) floatText(e.x, 3, e.z, m === 'venom' ? 'THE VENOM TAKES IT' : m === 'steel' ? 'BEHEADED' : 'STAKED', '#ffd24a', 15);
-  if (e.def.boss) (S.flags.slain = S.flags.slain || {})[e.type] = S.day;
+  // a keeper is only written down as slain when the kill is the player's to claim: a death nobody is paid for must never close a quest
+  if (e.def.boss && !e.noCredit && (src === pl || !src || src.team === 0)) (S.flags.slain = S.flags.slain || {})[e.type] = S.day;
   die(e, src);
   // when an Original dies, every vampire he ever made dies with him. The player's own unlinking (S.unlinked) spares the player and nobody else; Ambrose can be cut loose separately
   if (L === 'whiteoak' && isOrig(e)) storyEvent('slain', e);
@@ -242,7 +247,7 @@ function hitPlayer(src, o) {
   if (o.venom && vamp && !isHybrid() && pl.hp > 0) envenom(src);
   if (P.rageGain > 0) pl.rage = Math.min(100, (pl.rage || 0) + 6 * P.rageGain);
   if (o.kb) { const a = from ? dirTo(from, pl) : 0; pl.kx += Math.sin(a) * o.kb; pl.kz += Math.cos(a) * o.kb; }
-  if (P.thorns > 0 && src && src.kind === 'enemy' && !src.dead && !lying(src) && !src.phantom) { src.hp -= P.thorns; src.flash = 0.1; if (src.hp <= 0) fall(src, pl, { mat: 'steel' }); }
+  if (P.thorns > 0 && src && src.kind === 'enemy' && !src.dead && !lying(src) && !src.phantom && !bondHolds(src)) { src.hp -= P.thorns; src.flash = 0.1; if (src.hp <= 0) fall(src, pl, { mat: 'steel' }); }
   if (src && src.leech && !src.dead && !(src.fx.verv > 0)) src.hp = Math.min(src.maxHp, src.hp + d * src.leech * 4);
   const sw = sk('h_second'); if (sw && pl.hp > 0 && pl.hp < P.maxHp * 0.3 && pl.buff.second <= 0) { pl.buff.second = 90; heal(P.maxHp * (0.1 + 0.1 * sw)); floatText(pl.x, 3, pl.z, 'SECOND WIND', '#9effa0', 16); }
   if (pl.hp <= 0) playerDeath(src, o); return d;
@@ -263,7 +268,8 @@ function die(e, src) {
   if (!byP || e.phantom) return; payout(e, src);
   if (undead(e) && e.ring && !e.def.boss && !hasUniq('daylight') && !(S.cons.lapisq > 0) && chance(0.4)) mkDrop(e.x, e.z, 'cons', ['lapisq', 1], 0x4a6ae0);   // its daylight ring was spelled for it alone, but the lapis can be spelled again
   if (personLife(e) && S.origin === 'wolf' && S.species === 'human') triggerCurse();   // a human life taken wakes the gene. Mercy (see fall) is what keeps this from happening by accident.
-  if ((e.def.five || e.type === 'fivehunter') && isVamp()) hunterCurse();                 // the Hunter's Curse falls on a vampire who kills one of the Five
+  // the Hunter's Curse falls on a vampire who kills one of the Five. It only strikes a supernatural killer: have a compelled human do it and nothing follows you home.
+  if ((e.def.five || e.type === 'fivehunter') && isVamp() && (src === pl || !src || undead(src) || src.fam === 'wolf')) hunterCurse();
 }
 
 /* ---------------- projectiles and hazards ---------------- */
@@ -275,13 +281,13 @@ function shoot(owner, x, z, rot, o) {
 function updShots(dt) {
   for (let i = shots.length - 1; i >= 0; i--) { const p = shots[i]; p.t += dt; p.x += p.vx * dt; p.z += p.vz * dt; p.m.position.set(p.x, 1.3, p.z); p.m.rotation.y = Math.atan2(p.vx, p.vz); if (p.tumble) p.m.rotation.x += dt * 9; let gone = p.t > p.life || solidAt(p.x, p.z);
     if (p.orb && chance(0.6)) puff(p.x, 1.3, p.z, 1, { c: p.pc || MAGIC, add: 1, sp: 0.4, life: 0.35, size: 0.22, grav: 0, spread: 0.1 });
-    if (!gone) { const targets = p.team === 0 ? actors.filter(a => a.team === 1 && !a.dead && a.kind === 'enemy' && !a.ko) : [pl, ...actors.filter(a => a.team === 0 && !a.dead && a.kind === 'enemy' && !lying(a))];
+    if (!gone) { const targets = p.team === 0 ? actors.filter(a => a.kind === 'enemy' && a.team !== 0 && !a.dead && !a.ko) : [pl, ...actors.filter(a => a.team === 0 && !a.dead && a.kind === 'enemy' && !lying(a))];
       for (const a of targets) { if (a.dead || p.hitIds[a.id] || hyp(a.x - p.x, a.z - p.z) > p.r + a.r) continue; p.hitIds[a.id] = 1; p.keep = false; const got = hit(p.owner, a, { dmg: p.dmg, mat: p.mat, proj: p, verv: p.verv, bane: p.bane, venom: p.venom, kb: p.kb != null ? p.kb : 2, poise: p.poise || 6, spell: p.spell, at: p, dir: Math.atan2(p.vx, p.vz) }); if (p.keep) { p.hitIds = {}; p.t = 0; break; } if (a === pl && got === 0 && pl.inv > 0) { delete p.hitIds[a.id]; continue; } if (p.onHit && got) p.onHit(a); if (!p.pierce) { gone = true; break; } } }
     if (gone) { puff(p.x, 1.3, p.z, 5, { c: p.pc || SPARK, add: 1, sp: 2, life: 0.25, size: 0.14, grav: 0 }); p.m.parent && p.m.parent.remove(p.m); p.m.material.dispose(); shots.splice(i, 1); } }
 }
 /* hazard: a delayed circular blast (or lingering pool). o: team, mat, col, linger seconds, tick, onHit, src */
 function hazard(x, z, r, delay, dmg, o = {}) { const h = Object.assign({ x, z, r, delay, dmg, t: 0, team: 1, done: false, linger: 0, tickT: 0 }, o); if (delay > 0.05) h.tele = telegraph(x, z, 0, { kind: 'circle', r }, delay + 0.02, o.col || 0xff2030); zonesFx.push(h); return h; }
-function hazardHit(h, dmg) { const targets = h.team === 0 ? actors.filter(a => a.team === 1 && !a.dead && a.kind === 'enemy' && !a.ko) : [pl, ...actors.filter(a => a.team === 0 && !a.dead && a.kind === 'enemy' && !lying(a))]; for (const a of targets) if (a !== h.skip && hyp(a.x - h.x, a.z - h.z) < h.r + a.r * 0.5) { const got = hit(h.src || null, a, { dmg, mat: h.mat, at: h, unblock: h.unblock, kb: h.kb || 0, poise: h.poise || 0, spell: h.spell, verv: h.verv, bane: h.bane, venom: h.venom, dot: h.linger > 0, noCrit: h.linger > 0 && h.done }); if (got && h.onHit) h.onHit(a); } }
+function hazardHit(h, dmg) { const targets = h.team === 0 ? actors.filter(a => a.kind === 'enemy' && a.team !== 0 && !a.dead && !a.ko) : [pl, ...actors.filter(a => a.team === 0 && !a.dead && a.kind === 'enemy' && !lying(a))]; for (const a of targets) if (a !== h.skip && hyp(a.x - h.x, a.z - h.z) < h.r + a.r * 0.5) { const got = hit(h.src || null, a, { dmg, mat: h.mat, at: h, unblock: h.unblock, kb: h.kb || 0, poise: h.poise || 0, spell: h.spell, verv: h.verv, bane: h.bane, venom: h.venom, dot: h.linger > 0, noCrit: h.linger > 0 && h.done }); if (got && h.onHit) h.onHit(a); } }
 function updHazards(dt) {
   for (let i = zonesFx.length - 1; i >= 0; i--) { const h = zonesFx[i]; h.t += dt;
     if (!h.done && h.t >= h.delay) { h.done = true; hazardHit(h, h.dmg); const c = h.pc || (h.mat === 'fire' ? FIRE : h.mat === 'magic' ? MAGIC : h.mat === 'verv' ? VERV : h.mat === 'wolfsbane' ? HOLY : SPARK); puff(h.x, 0.5, h.z, Math.min(40, 10 + h.r * 6), { c, add: 1, sp: h.r * 1.6, up: 2.5, life: 0.5, size: 0.3, grav: 2, spread: h.r * 0.4 }); ringFx(h.x, h.z, h.col || 0xffa040, h.r * 1.2, 0.35); if (h.r > 2.5) { sfx('boom'); if (d2(pl, h) < 16) RT.shake = Math.max(RT.shake, 0.4); } if (h.after) h.after(); }
@@ -321,7 +327,7 @@ function startAtk(e, name, tgt) {
   else if (k === 'grab') c.tele = telegraph(e.x, e.z, e.rot, { kind: 'line', len: grabDist(A), w: (A.w || 1.2) * 2 }, c.wind, 0xb01030);
   else if (k === 'snap') c.tele = telegraph(e.x, e.z, e.rot, { kind: 'arc', r: (A.range || 2.6) + e.r, arc: A.arc || 1.4 }, c.wind, 0xff8a20);
   else if (k === 'gaze') { c.tele = telegraph(e.x, e.z, e.rot, { kind: 'arc', r: (A.range || 9) + e.r, arc: A.arc || 1 }, c.wind, 0xb070ff); if (tgt === pl && !e.phantom) floatText(e.x, 3.1, e.z, 'Look away', '#c090ff', 13); }
-  else if (k === 'slam') { if (!jump && !A.far) { c.tx = e.x; c.tz = e.z; } c.tele = telegraph(c.tx, c.tz, 0, { kind: 'circle', r: A.r || 3 }, c.wind); } else if (k === 'nova') c.tele = telegraph(e.x, e.z, 0, { kind: 'circle', r: 3 }, c.wind, 0xff3050);
+  else if (k === 'slam') { if (!jump && !A.far) { c.tx = e.x; c.tz = e.z; } c.tele = telegraph(c.tx, c.tz, 0, { kind: 'circle', r: A.r || 3 }, c.wind, A.mat === 'verv' ? 0xb070ff : undefined); } else if (k === 'nova') c.tele = telegraph(e.x, e.z, 0, { kind: 'circle', r: 3 }, c.wind, 0xff3050);
   else if (k === 'tk') c.tele = telegraph(c.tx, c.tz, 0, { kind: 'circle', r: A.r || 2.8 }, c.wind, 0x8a7cff); else if (k === 'boundary') c.tele = telegraph(c.tx, c.tz, 0, { kind: 'circle', r: A.r || 5 }, c.wind, 0xff5a6a);
   else if (k === 'aneurysm') c.tele = telegraph(e.x, e.z, e.rot, { kind: 'line', len: Math.min(A.range || 12, d2(e, tgt) + 1), w: 0.7 }, c.wind, 0xc090ff);
   if (k === 'summon') { sfx(e.fam === 'wolf' ? 'howl' : 'magic'); } if (k === 'blink') puff(e.x, 1.2, e.z, 18, { c: [0.1, 0.05, 0.12], add: 0.2, sp: 2, life: 0.5, size: 0.4, grav: 0 });
@@ -333,7 +339,7 @@ function resolveAtk(e, c) {
       for (const t of foes(e)) if (d2(e, t) < A.range + e.r + t.r && Math.abs(angd(dirTo(e, t), e.rot)) < A.arc / 2) hit(e, t, { dmg, mat, kb: 3, poise: 10, venom: ven }); break;
     case 'lunge': case 'dashchain': c.ph = 'dash'; c.t = 0; c.left = A.dist || 7; c.hitIds = {}; e.sw = { kind: e.rig.kind === 'biped' ? (bite ? 'bite' : 'stab') : 'bite', t: 0, dur: (A.dist || 7) / 28, hold: true }; sfx('blur'); return;
     case 'grab': c.ph = 'dash'; c.t = 0; c.left = grabDist(A); c.hitIds = {}; e.sw = { kind: 'bite', t: 0, dur: 0.3, hold: true }; sfx('blur'); return;
-    case 'slam': if (A.jump || name === 'pounce') { e.x = c.tx; e.z = c.tz; collide(e); } hazard(c.tx, c.tz, A.r || 3, 0, dmg, { team: e.team, src: e, mat, kb: 6, poise: 20, venom: ven, onHit: t => { if (name === 'pounce' && t === pl) addFx(pl, 'stun', 0.45); } });
+    case 'slam': if (A.jump || name === 'pounce') { e.x = c.tx; e.z = c.tz; collide(e); } hazard(c.tx, c.tz, A.r || 3, 0, dmg, { team: e.team, src: e, mat, kb: 6, poise: 20, venom: ven, verv: mat === 'verv', onHit: t => { if (t === pl && (name === 'pounce' || A.stun)) addFx(pl, 'stun', A.stun || 0.45); } });   // mat 'verv' + stun: a hunter's vervain grenade (ATK.vgren)
       if (A.multi) for (let i = 0; i < A.multi; i++) { const t = c.tgt, a = R(0, TAU), d = i === 0 ? 0 : R(2, 7); hazard(t.x + Math.sin(a) * d, t.z + Math.cos(a) * d, A.r, 0.7 + i * 0.35, dmg, { team: e.team, src: e, mat: 'magic', pc: MAGIC, col: 0x8a5cff }); } break;
     case 'shoot': { const base = dirTo(e, c.tgt), n = A.n || 1, fire = mat === 'fire', col = A.col || (fire ? 0xff7a20 : rock ? 0x8a8478 : 0x9a6bff), hunted = A.wood && (e.def.verv || e.def.bane);
       for (let i = 0; i < n; i++) { const p = shoot(e, e.x + Math.sin(base) * 0.8, e.z + Math.cos(base) * 0.8, base + (i - (n - 1) / 2) * (A.spread || 0), { spd: A.spd || 15, dmg, mat, col, orb: A.orb != null ? !!A.orb : !(A.wood || rock), tumble: rock, r: rock ? 0.8 : 0.5, kb: rock ? 8 : 2, poise: rock ? 30 : 6, pc: A.wood || rock ? SPARK : fire ? FIRE : [((col >> 16) & 255) / 255, ((col >> 8) & 255) / 255, (col & 255) / 255],
@@ -403,16 +409,22 @@ function updEnemy(e, dt) {
   e.poise = Math.min(e.maxPoise, e.poise + dt * e.maxPoise * 0.12);
   if (Math.abs(e.kx) + Math.abs(e.kz) > 0.05) { e.x += e.kx * dt; e.z += e.kz * dt; collide(e); const f = Math.pow(0.002, dt); e.kx *= f; e.kz *= f; }
   // sunrise: a vampire with no daylight ring burns where it stands
-  if (RT.area.id === 'world' && undead(e) && !isHyb(e) && !e.ring && !e.phantom && sunUp() && !shelterAt(e.x, e.z)) { const wet = S.weather === 'storm' || S.weather === 'rain' || S.weather === 'fog'; e.hp -= e.maxHp * (wet ? 0.06 : 0.16) * dt; e.hpShow = 2; e.fx.slow = Math.max(e.fx.slow || 0, 0.3); puff(e.x + R(-0.3, 0.3), 1.4, e.z + R(-0.3, 0.3), 2, { c: FIRE, add: 1, sp: 0.6, up: 2.5, life: 0.5, size: 0.3, grav: -2 });
-    if (e.hp <= 0) { if (!ai.provoked) e.paid = true; return fall(e, null, { mat: 'sun' }); } }
-  if (e.fx.stun > 0) { e.sp = 0; return; } for (const k in ai.cd) ai.cd[k] -= dt; ai.gcd -= dt; ai.t -= dt;
+  if (RT.area.id === 'world' && undead(e) && !isHyb(e) && !e.ring && !e.phantom && sunUp() && !shelterAt(e.x, e.z)) {
+    // a keeper nobody has struck (or one in a duel to the first fall) does not stand and wait for the sun: it goes to ground, and the story brings it back the next night
+    if (def.boss && (!ai.provoked || e.duel)) { if (RT.boss === e) { RT.boss = null; hideBoss(); } dropAtk(e); e.sw = null; if (e.duel && e.type === 'ambrose') S.flags.ambroseDay = S.day; if (pl && !pl.dead && d2(e, pl) < 60) toast(e.name.split(',')[0] + ' is gone before the sun clears the trees.'); e.gone = true; return; }
+    const wet = S.weather === 'storm' || S.weather === 'rain' || S.weather === 'fog'; e.hp -= e.maxHp * (wet ? 0.06 : 0.16) * dt; e.hpShow = 2; e.fx.slow = Math.max(e.fx.slow || 0, 0.3); puff(e.x + R(-0.3, 0.3), 1.4, e.z + R(-0.3, 0.3), 2, { c: FIRE, add: 1, sp: 0.6, up: 2.5, life: 0.5, size: 0.3, grav: -2 });
+    if (e.hp <= 0) { if (!ai.provoked) e.paid = e.noCredit = true; return fall(e, null, { mat: 'sun' }); } }
+  // any stun cancels the attack in hand (and lets go of whoever it was holding), however it was landed
+  if (e.fx.stun > 0) { if (ai.cur) { dropAtk(e); e.sw = null; e.y = 0; } e.sp = 0; return; } for (const k in ai.cd) ai.cd[k] -= dt; ai.gcd -= dt; ai.t -= dt;
   if (def.boss && !e.enraged && e.hp < e.maxHp * 0.5) { e.enraged = true; e.spdM *= 1.15; floatText(e.x, 3.4, e.z, 'ENRAGED', '#ff4050', 20); sfx('growl'); ringFx(e.x, e.z, 0xff2030, 9, 0.7); RT.shake = 0.5; if (e.fam === 'wolf' && e.rig.kind === 'biped') rigEyes(e.rig, 1); }
   else if (!def.boss && !e.enraged && e.fam === 'wolf' && e.rig.kind === 'biped' && e.hp < e.maxHp * 0.6) { e.enraged = true; e.dmgM *= 1.2; e.spdM *= 1.12; rigEyes(e.rig, 1); floatText(e.x, 2.9, e.z, 'FURY', '#ffd24a', 14); sfx('growl'); }   // a werewolf's eyes go gold when the anger comes up, and the strength with them
   if (ai.cur) return updAtk(e, dt);
   if (def.peaceful) { const d = d2(e, pl); if (d < 10 || e.hp < e.maxHp) { ai.flee = 3; } if (ai.flee > 0) { ai.flee -= dt; const a = dirTo(pl, e); mv(e, e.x + Math.sin(a) * 5, e.z + Math.cos(a) * 5, def.spd, dt); } else wander(e, dt, 2); return; }
+  // the leash: pulled too far from home it gives up, heals once, and walks back for a few seconds before it will look at anyone again. The Council's hunters (ai.hunt) are after the player, not a place.
+  if (e.team === 1 && RT.area.id === 'world' && !def.boss && !ai.hunt && !(ai.leash > 0) && d2(e, ai.home) > 70) { ai.aggro = false; ai.leash = 5; e.hp = e.maxHp; }
+  if (ai.leash > 0) { ai.leash -= dt; if (d2(e, ai.home) > 2) mv(e, ai.home.x, ai.home.z, def.spd, dt); else { e.sp = 0; ai.leash = 0; } return; }
   const tgt = nearestFoe(e, 60); if (!tgt) { if (e.team === 0) { if (d2(e, pl) > 3.5) mv(e, pl.x + 2, pl.z + 2, def.spd, dt); else e.sp = 0; } else { ai.aggro = false; wander(e, dt, 1.8); } return; } const d = d2(e, tgt);
   if (!ai.aggro) { if (d < (def.boss ? 16 : (isNight() ? 15 : 12)) && los(e, tgt)) aggro(e); else return wander(e, dt, 1.8); }
-  if (e.team === 1 && RT.area.id === 'world' && !def.boss && d2(e, ai.home) > 70) { ai.aggro = false; e.hp = e.maxHp; return; }
   if (e.team === 1 && tgt === pl && !e.phantom) RT.combatT = Math.max(RT.combatT, 3);
   if (ai.gcd <= 0) { const sees = d < 6 || los(e, tgt), opts = def.atk.filter(n => atkFits(e, n, tgt, d, sees));
     if (opts.length) { opts.sort((p, q) => (ATK[q].cd || 3) - (ATK[p].cd || 3)); return startAtk(e, chance(0.65) ? opts[0] : pick(opts), tgt); } }
@@ -444,11 +456,11 @@ function updNpc(n, dt) {
 }
 
 /* ---------------- phantoms: the Hunter's Curse, and the fever of a werewolf bite ---------------- */
-function haunting() { const h = absHours(); return (S.curseUntil || 0) > h ? 'curse' : (S.venomUntil || 0) > h && isVamp() && !isHybrid() ? 'venom' : null; }
+function haunting() { const h = absHours(); return (S.curseUntil || 0) > h ? 'curse' : (S.venomUntil || 0) > h && isVamp() && !isHybrid() ? 'venom' : (S.flags.ringHaunt || 0) > h && S.species === 'human' ? 'ring' : null; }   // 'ring': what a Founder's Ring keeps each time it brings its wearer back (40-systems respawn)
 function spawnPhantom(kind) {
   const types = (kind === 'curse' ? ['fivehunter', 'fivehunter', 'hunter', 'robber'] : ['robber', 'hunter', 'feral', 'cultist']).filter(t => EN[t] && !EN[t].boss); if (!types.length) return null;
   for (let t = 0; t < 6; t++) { const a = R(0, TAU), d = R(8, 13), x = pl.x + Math.sin(a) * d, z = pl.z + Math.cos(a) * d; if (solidAt(x, z)) continue; const probe = { x, z, r: 0.6 }; collide(probe); if (hyp(probe.x - x, probe.z - z) > 1.5) continue;
-    const e = spawnEnemy(pick(types), x, z, S.lvl, { spawned: true, phantom: true, awake: 1 }); e.name = kind === 'curse' ? (e.type === 'fivehunter' ? 'The hunter you killed' : pick(['Someone you failed', 'A face from home'])) : pick(['Someone you bit', 'A face from home', 'Your own voice']); e.rot = dirTo(e, pl); return e; }
+    const e = spawnEnemy(pick(types), x, z, S.lvl, { spawned: true, phantom: true, awake: 1 }); e.name = kind === 'curse' ? (e.type === 'fivehunter' ? 'The hunter you killed' : pick(['Someone you failed', 'A face from home'])) : pick([kind === 'ring' ? 'Someone who is not there' : 'Someone you bit', 'A face from home', 'Your own voice']); e.rot = dirTo(e, pl); return e; }
   return null;
 }
 function vanish(e, struck) { if (e.dead) return; e.dead = true; e.gone = true; dropAtk(e); puff(e.x, 1.2, e.z, 16, { c: [0.5, 0.52, 0.6], add: 0.5, sp: 1.6, up: 1, life: 0.6, size: 0.36, grav: 0 }); if (struck) { floatText(e.x, 2.6, e.z, 'Not real', '#c8c0e0', 14); sfx('tele'); } }
@@ -490,7 +502,7 @@ function updSpawns(dt) {
         for (let k = 0; k < pack; k++) { const elite = k === 0 && chance(night ? 0.09 : 0.05), e = spawnEnemy(type, x + R(-2, 2) * k, zz + R(-2, 2) * k, lvl, { spawned: true, elite, ring: elite && def.fam === 'vampire', awake: 1 }); collide(e); } break; } }
   // anything the town has seen for what it is gets hunted: vervain, wolfsbane and wooden rounds, and now and then one of the Five
   if (S.species !== 'human' && S.exposure >= 50 && EN.hunter) { squadT -= 1.6; if (squadT <= 0 && actors.filter(e => (e.type === 'hunter' || e.type === 'fivehunter') && !e.dead && !e.phantom).length < 4) { squadT = 45; const a = R(0, TAU), five = EN.fivehunter && isVamp() && chance(0.22) && !actors.some(e => e.type === 'fivehunter' && !e.dead && !e.phantom);
-      for (let k = 0; k < 2; k++) { const e = spawnEnemy(k === 0 && five ? 'fivehunter' : 'hunter', pl.x + Math.sin(a) * 42 + k * 2, pl.z + Math.cos(a) * 42, Math.max(3, S.lvl + RI(-1, 1)), { spawned: true }); collide(e); e.ai.provoked = true; aggro(e); }
+      for (let k = 0; k < 2; k++) { const e = spawnEnemy(k === 0 && five ? 'fivehunter' : 'hunter', pl.x + Math.sin(a) * 42 + k * 2, pl.z + Math.cos(a) * 42, Math.max(3, S.lvl + RI(-1, 1)), { spawned: true }); collide(e); e.ai.provoked = e.ai.hunt = true; aggro(e); }
       toast(five ? 'The Council has your description. One of the men coming is not Council: he moves like he was made for this.' : 'The Council has your description. Hunters are closing in.'); } }
   worldEvents();
 }

@@ -36,7 +36,11 @@ function toggleShift() {
   if (why) { sfx('deny'); toast(why); return false; } if (pl.shiftCd > 0) { sfx('deny'); return false; }
   return setForm(!pl.wolf, true);
 }
-const weaponCls = () => pl.wolf ? 'wolf' : P.wcls || (S.eq.weapon ? BASES[S.eq.weapon.base].cls : 'fast'), moveSet = () => CLS[weaponCls()] || WOLFSET;
+/* a siphoner makes no magic of her own: with nothing siphoned, the stick in her hand is only a stick (the same three hits as any plain weapon), and each push she does throw costs her 2 focus */
+const weaponCls = () => pl.wolf ? 'wolf' : P.wcls || (S.eq.weapon ? BASES[S.eq.weapon.base].cls : 'fast'), moveSet = () => { const k = weaponCls(); return k === 'staff' && S.origin === 'siphoner' && pl.foc < 2 ? CLS.med : CLS[k] || WOLFSET; };
+const PUSHAIR = [0.85, 0.83, 0.78];                                                  // the colour of a telekinetic shove: dust and pale air
+/* the sire bond, for everything that does not go through hit(): a sired hybrid's own hand cannot stun Corvin, drop him or bleed him */
+const bondHolds = t => !!t && sireBound() && t.type === S.sire;
 const plMat = () => pl.wolf ? 'bite' : !S.eq.weapon && !isVamp() && !isWolf() ? 'fist' : P.wmat;   // a living person's bare hands stake nothing and behead nothing
 const plTargets = () => actors.filter(a => a.kind === 'enemy' && !a.dead && a.team !== 0 && !a.ko);
 const canAct = () => pl && !pl.dead && !RT.paused && !(pl.fx.stun > 0) && !pl.feed && !(pl.fx.charm > 0) && !(pl.shiftT > 0);
@@ -64,13 +68,14 @@ function startHeavy() {
 }
 function plResolve() {
   const a = pl.act, c = moveSet(), m = plMat(), col = m === 'bite' ? 0xffe0a0 : m === 'wood' || m === 'whiteoak' ? 0xffd9a0 : 0xe8f0ff;
-  if (!a.heavy) { if (c.bolt) { shoot(pl, pl.x + Math.sin(pl.rot) * 0.9, pl.z + Math.cos(pl.rot) * 0.9, pl.rot, { spd: 24, dmg: P.spellBase * 0.5 * a.mult, mat: 'magic', col: 0x9a8cff, orb: true, spell: true, range: 20, poise: 8 }); return; }
+  // a witch's plain attack is a shove of the mind, not a glowing orb: a pale ripple of pushed air that knocks back whatever it meets
+  if (!a.heavy) { if (c.bolt) { if (S.origin === 'siphoner') pl.foc = Math.max(0, pl.foc - 2); const p = shoot(pl, pl.x + Math.sin(pl.rot) * 0.9, pl.z + Math.cos(pl.rot) * 0.9, pl.rot, { spd: 24, dmg: P.spellBase * 0.5 * a.mult, mat: 'magic', col: 0xd8d4c8, pc: PUSHAIR, orb: false, spell: true, range: 20, poise: 8, kb: 4 }); p.m.geometry = orbGeo; p.m.scale.set(1.9, 1.5, 0.3); p.m.material.transparent = true; p.m.material.opacity = 0.36; p.m.material.depthWrite = false; return; }
     trail(pl, c.range, c.arc, col, a.i % 2 ? -1 : 1, pl.wolf ? 0.8 : 1.15); meleeHit(c.range, c.arc, a.mult, { poise: c.poise * (a.i === 2 ? 1.7 : 1), kb: 2 + a.i * 1.5 }); return; }
   if (a.heavy === 'lunge') { trail(pl, c.range + 1, 1.2, col); meleeHit(c.range + 1.2, 1.3, a.mult, { poise: 45, kb: 5, heavy: 1 }); }
   else if (a.heavy === 'over') { trail(pl, c.range + 0.8, 1.6, col); meleeHit(c.range + 0.9, 1.5, a.mult, { poise: 70, kb: 6, heavy: 1 }); const fx_ = pl.x + Math.sin(pl.rot) * 2.4, fz = pl.z + Math.cos(pl.rot) * 2.4, ward = S.eq.weapon && S.eq.weapon.uniq === 'wardblade'; hazard(fx_, fz, ward ? 5 : 2.6, 0, P.wdmg * P.meleeM * (ward ? 1.2 : 0.5), { team: 0, src: pl, mat: m, poise: 30 }); }
   else if (a.heavy === 'spin') { trail(pl, c.range + 0.5, 6.2, col); meleeHit(c.range + 0.6, 7, a.mult * 0.6, { poise: 40, kb: 5, heavy: 1 }); sfx('swing'); }
   else if (a.heavy === 'pounce') { trail(pl, c.range + 0.6, 2.6, col, 1, 0.8); meleeHit(c.range + 0.9, 2.8, a.mult, { poise: 80, kb: 5, heavy: 1 }); ringFx(pl.x, pl.z, 0xffd040, 3, 0.35); sfx('bite'); RT.shake = Math.max(RT.shake, 0.3); }
-  else if (a.heavy === 'blast') hazard(a.pt.x, a.pt.z, 3.4, 0.12, P.spellBase * a.mult, { team: 0, src: pl, mat: 'magic', pc: MAGIC, col: 0x8a7cff, spell: 1, poise: 40, kb: 4 });
+  else if (a.heavy === 'blast') hazard(a.pt.x, a.pt.z, 3.4, 0.12, P.spellBase * a.mult, { team: 0, src: pl, mat: 'magic', pc: PUSHAIR, col: 0xd8d4c8, spell: 1, poise: 40, kb: 6 });   // the same shove, thrown wide: dust and pale air, no colour of its own
 }
 function tryAttack() { if (!canAct()) return; const a = pl.act; if (!a) return startLight(); if (a.type === 'atk' && !a.heavy && a.done && a.t > a.dur * 0.9) return startLight(); pl.buf = 'atk'; pl.bufT = 0.32; }
 function tryHeavy() { if (!canAct()) return; if (pl.act) { pl.buf = 'heavy'; pl.bufT = 0.3; return; } startHeavy(); }
@@ -94,11 +99,13 @@ function grenade(r, mat) {   // vervain is poison to vampires, hybrids and Origi
   const p = aimPoint(13), v = mat === 'verv'; pl.sw = { kind: 'slashR', t: 0, dur: 0.3 }; sfx('swing');
   hazard(p.x, p.z, 4.4, 0.55, skDmg() * (1.2 + 0.4 * r), { team: 0, src: pl, mat, pc: v ? VERV : HOLY, col: v ? 0xa070ff : 0xffe060, poise: 40, onHit: e => { if (v ? undead(e) : baneHurts(e)) { addFx(e, 'stun', 1 + r); addFx(e, 'sear', 4, e.maxHp * 0.012); addFx(e, v ? 'verv' : 'wolfsbane', 6); } } });
 }
-/* one mouthful from an enemy. Human blood is worth everything; animal, werewolf and hybrid blood half; a vampire's or a spirit's nothing; vervain in the blood burns. Returns what it was worth (0 to 1). */
+/* one mouthful from an enemy. Human blood is worth everything; animal, werewolf and hybrid blood half; another vampire's a quarter (it is blood, and a vampire can live on it);
+   a spirit's nothing, and nothing from the starved grey dead of the tomb or the Sleeper, who have none left to give; vervain in the blood burns. Returns what it was worth (0 to 1). */
 function feedOn(e, blood, healF) {
-  const f = e.fam; if (f === 'vampire' || f === 'original' || f === 'spirit') { floatText(pl.x, 2.8, pl.z, f === 'spirit' ? 'Nothing to drink' : 'Dead blood. Nothing in it for you', '#a0b0c0', 13); return 0; }
+  const f = e.fam, dead = f === 'vampire' || f === 'original'; if (f === 'spirit' || (dead && e.def.desic)) { floatText(pl.x, 2.8, pl.z, f === 'spirit' ? 'Nothing to drink' : 'Starved dry. Nothing in it for you', '#a0b0c0', 13); return 0; }
   if (e.def.verv) { vervBurn(); return 0; }
-  const k = f === 'human' || f === 'witch' ? 1 : 0.5, diet = f === 'animal' ? 'animal' : k === 1 ? 'human' : S.diet; pl.blood = Math.min(P.maxBlood, pl.blood + blood * k); heal(P.maxHp * healF * k); puff(e.x, 1.5, e.z, 16, { c: BLOOD, add: 0.05, sp: 3, life: 0.6, size: 0.24 }); S.stats.feeds++;
+  if (dead) floatText(pl.x, 2.8, pl.z, 'Vampire blood. Thin, but it is blood', '#a0b0c0', 13);
+  const k = f === 'human' || f === 'witch' ? 1 : dead ? 0.25 : 0.5, diet = f === 'animal' ? 'animal' : k === 1 ? 'human' : S.diet; pl.blood = Math.min(P.maxBlood, pl.blood + blood * k); heal(P.maxHp * healF * k); puff(e.x, 1.5, e.z, 16, { c: BLOOD, add: 0.05, sp: 3, life: 0.6, size: 0.24 }); S.stats.feeds++;
   if (diet !== S.diet) { S.diet = diet; recalc(); if (diet === 'animal') toast('Animal blood. It keeps you on your feet and not much more: you are weaker on it, and slower to heal.'); } return k;
 }
 function vervBurn() { pl.hp = Math.max(1, pl.hp - P.maxHp * 0.1); pl.fx.verv = Math.max(pl.fx.verv || 0, 6); RT.hurtV = Math.max(RT.hurtV, 0.6); sfx('hurt'); floatText(pl.x, 2.9, pl.z, 'VERVAIN', '#c090ff', 16); puff(pl.x, 1.6, pl.z, 12, { c: VERV, add: 1, sp: 2, life: 0.5, size: 0.2, grav: 0 }); recalc(); }
@@ -155,12 +162,13 @@ const ABIL = {
   w_desic() { const t = touchTarget(3, undead); if (!t) return sayNo(pl, 'No vampire within reach');
     if (!(t.downed || t.fx.stun > 0 || t.fx.root > 0 || t.hp / t.maxHp < 0.35)) return sayNo(t, 'Too strong. Stagger it, bind it or wear it down');
     pl.rot = dirTo(pl, t); pl.sw = { kind: 'gaze', t: 0, dur: 0.6 }; sfx('turn'); RT.flashV = 0.18; ringFx(t.x, t.z, 0xb8c0d0, 5, 0.8); puff(t.x, 1.3, t.z, 30, { c: ASH, add: 0.1, sp: 1.6, up: 1, life: 1, size: 0.34, grav: 0.5 }); puff(pl.x, 1.9, pl.z, 6, { c: BLOOD, add: 0.05, sp: 0.8, life: 0.6, size: 0.14 }); floatText(t.x, 3, t.z, 'DESICCATED', '#b8c0d0', 19);
-    if (isOrig(t)) { if (t.downed) t.downT = 1e9; else { t.downFor = 1e9; downEnemy(t, pl); } t.desiccated = true; toast('His heart stops under your hand. He will lie there, grey, until somebody feeds him. Nobody of his line dies for this.'); }
+    if (isOrig(t)) { if (t.downed) t.downT = 1e9; else { t.downFor = 1e9; downEnemy(t, pl); } t.desiccated = true; toast('His heart stops under your hand. He will lie there, grey, until somebody feeds him.' + (isImmortal(t) ? '' : ' Nobody of his line dies for this.')); }
     else if (t.downed) trueDeath(t, pl, { lethal: 'desic' }); else hit(pl, t, { dmg: t.hp + t.maxHp, mat: 'magic', spell: 1, lethal: 'desic', noCrit: 1, noLs: 1 }); },
   /* Fury: the anger let out. The numbers live in recalc; here it is the eyes, and nothing being able to stagger you. */
   l_rage(r) { pl.buff.fury = 6 + 2 * r; pl.fx.stun = 0; recalc(); sfx('growl'); ringFx(pl.x, pl.z, 0xffd040, 5, 0.5); RT.shake = Math.max(RT.shake, 0.3); floatText(pl.x, 2.8, pl.z, 'FURY', '#ffd24a', 18); rigEyes(pl.rigH, 1); },
-  l_pounce(r) { const t = aimTarget(10); if (!t) return sayNo(pl, 'Nothing to leap at'); const a = dirTo(pl, t); dashTo(t.x - Math.sin(a) * (1.1 + t.r), t.z - Math.cos(a) * (1.1 + t.r)); pl.rot = a; pl.inv = Math.max(pl.inv, 0.4); pl.sw = { kind: pl.wolf ? 'bite' : 'slam', t: 0, dur: 0.4, jump: 1.3 }; pl.act = { type: 'skill', kind: 'lock', t: 0, dur: 0.35 }; sfx(pl.wolf ? 'bite' : 'heavy'); ringFx(t.x, t.z, 0xffd040, 3, 0.35);
-    hit(pl, t, { dmg: skDmg() * (2 + 0.5 * r), mat: plMat(), melee: 1, poise: 80, heavy: 1 }); if (!t.dead && !lying(t)) { addFx(t, 'stun', 1 + 0.5 * r); if (!t.def.boss) floatText(t.x, 2.6, t.z, 'FLAT', '#ffe9a0', 13); } },
+  /* Pounce: a bite and a pin in either shape, so it carries the venom (pvenom) whenever P.venom says there is any */
+  l_pounce(r) { const t = aimTarget(10); if (!t) return sayNo(pl, 'Nothing to leap at'); if (bondHolds(t)) return sayNo(t, 'SIRED'); const a = dirTo(pl, t); dashTo(t.x - Math.sin(a) * (1.1 + t.r), t.z - Math.cos(a) * (1.1 + t.r)); pl.rot = a; pl.inv = Math.max(pl.inv, 0.4); pl.sw = { kind: pl.wolf ? 'bite' : 'slam', t: 0, dur: 0.4, jump: 1.3 }; pl.act = { type: 'skill', kind: 'lock', t: 0, dur: 0.35 }; sfx(pl.wolf ? 'bite' : 'heavy'); ringFx(t.x, t.z, 0xffd040, 3, 0.35);
+    hit(pl, t, { dmg: skDmg() * (2 + 0.5 * r), mat: plMat(), melee: 1, poise: 80, heavy: 1, pvenom: 1 }); if (!t.dead && !lying(t)) { addFx(t, 'stun', 1 + 0.5 * r); if (!t.def.boss) floatText(t.x, 2.6, t.z, 'FLAT', '#ffe9a0', 13); } },
   l_howl(r) { const t = 3 + r; pl.sw = { kind: 'howl', t: 0, dur: 0.9 }; pl.act = { type: 'skill', kind: 'lock', t: 0, dur: 0.6 }; sfx('howl'); ringFx(pl.x, pl.z, 0xffd040, 12, 0.8); pl.rage = Math.min(100, (pl.rage || 0) + 15 + 5 * r);
     for (const e of plTargets()) { if (d2(pl, e) > 12 || lying(e) || e.phantom) continue; addFx(e, 'slow', t); if (!e.def.boss && !e.elite && (e.fam === 'human' || e.fam === 'animal') && !e.def.five) { e.fearT = t; if (e.ai) e.ai.provoked = true; floatText(e.x, 2.6, e.z, 'RUNS', '#ffe9a0', 13); } }
     if (sk('l_alpha') && EN.wolf && actors.filter(e => e.ally && !e.dead).length < 2) for (let i = 0; i < 2; i++) { const a = R(0, TAU), s = spawnEnemy('wolf', pl.x + Math.sin(a) * 4, pl.z + Math.cos(a) * 4, S.lvl, { spawned: true, awake: 1, name: 'Pack wolf' }); s.team = 0; s.ally = 1; s.allyT = 30; s.noLoot = true; s.ai.aggro = true; collide(s); puff(s.x, 1, s.z, 12, { c: [0.3, 0.3, 0.34], add: 0.3, sp: 2, life: 0.5, size: 0.3, grav: 0 }); } },
@@ -177,7 +185,7 @@ const ABIL = {
     if (!clear || d2(pl, t) > 3.4 + t.r) { floatText(pl.x, 2.6, pl.z, 'Stopped short', '#c8c0e0', 13); return; } pl.sw = { kind: 'slashR', t: 0, dur: 0.25 }; trail(pl, 3, 2, 0xdfe8ff); hit(pl, t, { dmg: skDmg() * (2.2 + 0.6 * r), mat: plMat(), melee: 1, crit: 1, poise: 60, heavy: 1 }); },
   v_ripper() { flipSwitch(); ringFx(pl.x, pl.z, S.switchOff ? 0xff2030 : 0xd8d0c0, 6, 0.6); },
   /* Neck Snap: the end of a person; a few seconds on the floor for a vampire or a hybrid, who can be finished while they lie there */
-  v_snap(r) { const t = aimTarget(8); if (!t) return sayNo(pl, 'Nobody in reach'); const hard = t.def.boss || !!t.elite || isOrig(t); if (hard && !(t.fx.stun > 0)) return sayNo(t, 'Only while it is staggered');
+  v_snap(r) { const t = aimTarget(8); if (!t) return sayNo(pl, 'Nobody in reach'); if (bondHolds(t)) return sayNo(t, 'SIRED'); const hard = t.def.boss || !!t.elite || isOrig(t); if (hard && !(t.fx.stun > 0)) return sayNo(t, 'Only while it is staggered');
     const a = t.rot + PI, dmg = skDmg() * (2 + 0.5 * r); dashTo(t.x + Math.sin(a) * (1.1 + t.r), t.z + Math.cos(a) * (1.1 + t.r), true); pl.rot = pl.vr = dirTo(pl, t); pl.inv = Math.max(pl.inv, 0.4); pl.sw = { kind: 'claw', t: 0, dur: 0.3 }; pl.act = { type: 'skill', kind: 'lock', t: 0, dur: 0.3 }; sfx('blur'); sfx('crit');
     if (hard) { t.fx.stun += 2; hit(pl, t, { dmg, mat: 'steel', poise: 0 }); return; }
     if (mortalPerson(t)) { floatText(t.x, 3, t.z, 'NECK SNAPPED', '#ffd24a', 17); hit(pl, t, { dmg: t.hp + t.maxHp, mat: 'steel', noCrit: 1, noLs: 1 }); if (t.dead && !S.switchOff) S.humanity = Math.max(0, S.humanity - 5); return; }
@@ -185,7 +193,7 @@ const ABIL = {
     if (t.fam === 'wolf' && t.hp / t.maxHp < 0.2 + 0.1 * r) { floatText(t.x, 3, t.z, 'NECK SNAPPED', '#ffd24a', 17); hit(pl, t, { dmg: t.hp + t.maxHp, mat: 'steel', noCrit: 1, noLs: 1 }); return; }
     hit(pl, t, { dmg, mat: 'steel', poise: 40 }); },
   /* Heart Extraction: ends anything that can die, if it is down, staggered or nearly finished. An Original gets up again regardless. */
-  v_heart(r) { const t = touchTarget(3); if (!t) return sayNo(pl, 'Nobody within reach'); if (t.fam === 'spirit') return sayNo(t, 'No heart'); const low = t.hp / t.maxHp < 0.2 + 0.05 * r, ok = t.downed || low || (!t.def.boss && t.fx.stun > 0);
+  v_heart(r) { const t = touchTarget(3); if (!t) return sayNo(pl, 'Nobody within reach'); if (bondHolds(t)) return sayNo(t, 'SIRED'); if (t.fam === 'spirit') return sayNo(t, 'No heart'); const low = t.hp / t.maxHp < 0.2 + 0.05 * r, ok = t.downed || low || (!t.def.boss && t.fx.stun > 0);
     pl.rot = dirTo(pl, t); pl.sw = { kind: 'stab', t: 0, dur: 0.35 }; pl.act = { type: 'skill', kind: 'lock', t: 0, dur: 0.35 }; pl.inv = Math.max(pl.inv, 0.35); sfx('heavy');
     if (!ok) { hit(pl, t, { dmg: skDmg() * (2.4 + 0.4 * r), mat: 'steel', poise: 50 }); return; }
     puff(t.x, 1.4, t.z, 22, { c: BLOOD, add: 0.05, sp: 3.5, up: 2, life: 0.7, size: 0.26 }); sfx('crit'); RT.hitstop = Math.max(RT.hitstop, 0.08);
@@ -217,7 +225,8 @@ function startFeed(n) {
   pl.rot = dirTo(pl, n); n.rot = pl.rot; sfx('bite'); puff(n.x, 1.5, n.z, 8, { c: BLOOD, add: 0.05, sp: 2, life: 0.5, size: 0.2 }); rigEyes(pl.rigH, 2); pl.faceT = 1.5;
   let seen = 0; for (const o of actors) if (o.kind === 'npc' && o !== n && !o.dead && o.rig.g.visible && d2(o, n) < 12 && los(o, n)) { seen++; o.fleeT = 6; } if (seen) { S.exposure = Math.min(100, S.exposure + 14 + seen * 8); toast('Someone saw you.'); }
   if (n.verv && !tr) { vervBurn(); pl.sw = { kind: 'bite', t: 0, dur: 0.4 }; n.fleeT = 8; n.fearDay = S.day; n.fedDay = S.day; S.exposure = Math.min(100, S.exposure + 25); S.stats.feeds++; toast('Vervain. It burns all the way down, you get nothing, and they will remember your face.'); codex('vervain'); return; }
-  pl.feed = { v: n, got: 0, auto: !!tr }; n.held = true;                                                                 // the first mouthful in transition was agreed to in so many words: it does not also need the key held n.pose = 'held'; pl.sw = { kind: 'bite', t: 0, dur: 9, hold: true };
+  // the first mouthful in transition was agreed to in so many words: it does not also need the key held
+  pl.feed = { v: n, got: 0, auto: !!tr }; n.held = true; n.pose = 'held'; pl.sw = { kind: 'bite', t: 0, dur: 9, hold: true };
 }
 function endFeed(interrupted, quiet) {
   const f = pl.feed; if (!f) return; const n = f.v, fd = $('feed'); pl.feed = null; pl.sw = null; n.held = false; n.pose = null; if (fd) fd.hidden = true; if (n.dead) return; n.dazed = 5; n.fedDay = S.day; S.stats.feeds++;
@@ -246,6 +255,7 @@ function finishDowned(e) {   // the heart or the head, with whatever you are car
   if (!e || e.dead || !e.downed || !pl || pl.dead) return false; const w = S.eq.weapon, rg = S.eq.ranged, wm = pl.wolf ? 'bite' : w ? P.wmat : null, rm = !pl.wolf && rg ? BASES[rg.base].mat : null;
   const wood = wm === 'wood' || wm === 'whiteoak' || (w && BASES[w.base].cls === 'staff') || rm === 'wood', blade = wm === 'steel' || rm === 'steel', hands = pl.wolf || isVamp() || isWolf(); let how = null;
   if (isHybrid() && S.sire && e.type === S.sire && !((S.flags.shifts || 0) >= 100)) { sfx('deny'); toast('You are sired to him. Your hands will not close on anything that would end him.'); return false; }
+  if (isImmortal(e)) { sfx('deny'); toast('Nothing ends him. He was old before the white oak grew. No stake kills him and no blade does. He lies still a while, and that is all anyone gets.'); return false; }
   if (isOrig(e)) { if (pl.wolf || P.wmat !== 'whiteoak') { sfx('deny'); toast('Nothing you are carrying can end one of the first family. Only white oak, through the heart.'); return false; } how = 'whiteoak'; }
   else if (isHyb(e)) { how = blade ? 'head' : hands ? 'heart' : null; if (!how) { sfx('deny'); toast('Wood only puts a hybrid on the floor. It takes a blade for the head, or a hand that can reach the heart.'); return false; } }
   else { how = wood ? 'stake' : blade ? 'head' : hands ? 'heart' : null; if (!how) { sfx('deny'); toast('You need wood for the heart or a blade for the neck.'); return false; } }
@@ -254,7 +264,9 @@ function finishDowned(e) {   // the heart or the head, with whatever you are car
   trueDeath(e, pl, { mat: how === 'whiteoak' ? 'whiteoak' : how === 'stake' ? 'wood' : 'steel', lethal: how }); return true;
 }
 function ashDagger(e) {   // the white-oak-ash dagger: holds a pure Original as dead while it stays in, kills an ordinary vampire who uses it, and does nothing to the Original hybrid
-  if (!e || e.dead || !e.downed || !(S.cons.ashdagger > 0)) return false; S.cons.ashdagger--; pl.rot = dirTo(pl, e); pl.sw = { kind: 'stab', t: 0, dur: 0.4 }; sfx('heavy');
+  if (!e || e.dead || !e.downed || !(S.cons.ashdagger > 0)) return false;
+  if (isImmortal(e)) { sfx('deny'); toast('The dagger was made for the first family. He is older than they are, and the ash is nothing to him. You keep it.'); return false; }
+  S.cons.ashdagger--; pl.rot = dirTo(pl, e); pl.sw = { kind: 'stab', t: 0, dur: 0.4 }; sfx('heavy');
   if (isHyb(e)) { e.downT = Math.min(e.downT, 2.5); toast('The dagger goes in to the hilt and nothing happens. His wolf side heals from silver. He is already stirring.'); storyEvent('dagger', e, false); return true; }
   e.downT = 1e9; e.daggered = true; ringFx(e.x, e.z, 0xd8d8e0, 5, 0.7); puff(e.x, 0.6, e.z, 20, { c: ASH, add: 0.1, sp: 1.5, up: 1, life: 1, size: 0.3, grav: 0.5 }); floatText(e.x, 2.4, e.z, 'DAGGERED', '#d8d8e0', 18); toast('The ash takes him. He will lie like the dead for as long as the dagger stays where it is, and nobody of his line dies for it.'); storyEvent('dagger', e, true);
   if (isVamp() && !S.original) { toast('The dagger was made to kill any vampire who used it. You knew that.'); playerDeath(null, { mat: 'ash' }); } return true;
@@ -276,7 +288,10 @@ function actorInteract(n, dist) {
   if (n.ko) return dist < reach && S.origin === 'wolf' && S.species === 'human' ? { label: `Kill the unconscious ${nm} (this wakes the curse)`, act: () => say([['', 'They are breathing. Kill them and the curse in your blood wakes for good: you will turn on every full moon for the rest of your life.']], [['Kill them.', () => mercyKill(n)], ['Leave them.', () => { }]]) } : null;
   if (n.downed) { if (dist >= reach + 0.4) return null;
     if (isOrig(n)) { if (n.fateInter) return null;                                                                           // the story is standing over this one: its own prompt decides
-      if (!pl.wolf && P.wmat === 'whiteoak') return { label: `Drive the white oak through ${nm}'s heart (this ends him, and his whole line)`, act: () => say([['', `White oak through the heart is the one thing that kills ${nm}. Every vampire he ever made dies within the hour${lineLinked() ? ', and you are one of them' : ''}. The stake burns with him.`]], [['End him.', () => finishDowned(n)], ['Not like this.', () => { }]]) };
+      // the Sleeper is not of the first family: white oak does not kill him and the ash dagger does not hold him. He can be siphoned, and he can be left lying.
+      if (isImmortal(n)) { if (S.origin === 'siphoner' && canMagic() && !pl.wolf) return { label: 'Siphon ' + nm, act: () => siphonTouch(n) };
+        return !pl.wolf && !n.toldNo && (P.wmat === 'whiteoak' || S.cons.ashdagger > 0) ? { label: `Nothing you carry ends ${nm}`, act: () => { n.toldNo = 1; sfx('deny'); toast('He was old before the white oak grew. The stake would only be wood in him, and the dagger was made for another family. He lies still a while, and that is all anyone gets.'); } } : null; }
+      if (!pl.wolf && P.wmat === 'whiteoak') return { label: `Drive the white oak through ${nm}'s heart (this ends him, and his whole line)`, act: () => say([['', `White oak through the heart is the one thing that kills ${nm}. Every vampire he ever made dies within the hour${lineLinked() && S.sire === n.type ? ', and you are one of them' : ''}. The stake burns with him.`]], [['End him.', () => finishDowned(n)], ['Not like this.', () => { }]]) };
       if (!pl.wolf && S.cons.ashdagger > 0 && !n.daggered) return { label: `Use the ash dagger on ${nm}` + (vamp && !S.original ? ' (it kills a vampire who uses it)' : ''), act: () => ashDagger(n) };
       if (S.origin === 'siphoner' && canMagic() && !pl.wolf) return { label: 'Siphon ' + nm, act: () => siphonTouch(n) }; return null; }
     if (S.origin === 'siphoner' && canMagic() && !pl.wolf && n.fam === 'vampire' && n.downT < 1e8 && pl.foc < P.maxFoc * 0.5) return { label: `Siphon the ${nm} dry`, act: () => siphonTouch(n) };

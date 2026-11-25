@@ -201,9 +201,10 @@ function stoneTex() { const c = document.createElement('canvas'); c.width = c.he
 let stoneT = null;
 const TOMBMODS = [{ n: 'Swarm', d: 'half again as many, each a little weaker.', count: 1.6, hp: 0.7 }, { n: 'Champions', d: 'many of the dead here kept their names.', elite: 0.3 }, { n: 'Vault', d: 'more chests, and stronger guards.', chest: 0.4, lvl: 2 }, { n: 'Blood Moon', d: 'they hit harder. They are worth more.', dmg: 1.25, xp: 1.6 }, { n: 'Ossuary', d: 'tougher dead, by a third.', hp: 1.35, xp: 1.3 }];
 /* Floors 1 to 4 are the tomb of 1864: the vampires a Thorne witch sealed under Fell's Church, starved grey and still waiting. The older prison lies below.
-   Its keepers: the Warden on 5, Corvin on 10, the Sleeper and the Cure on 20. A keeper who has truly died does not come back; another takes the floor.
+   Its keepers: the Warden on 5, Corvin on 10, the Sleeper and the Cure on 20. A keeper who has truly died does not come back; a nameless elder takes the floor.
+   Only the Warden is ever lent to another keeper floor: the people of the surface stories (Mother Lenore of the quarry, the Hundred of Coven Hollow) belong where their quests are, and killing a copy down here would settle those quests.
    Nothing in wolf form is ever down here. There is no moon underground. */
-const TOMBKEEP = { 5: 'warden', 10: 'corvin', 20: 'sleeper' }, TOMBROTA = ['matriarch', 'warden', 'lenore'];
+const TOMBKEEP = { 5: 'warden', 10: 'corvin', 20: 'sleeper' }, TOMBROTA = ['warden'];
 function tombBoss(d) { const sl = S.flags.slain || {}, fate = S.flags.corvinFate, ok = t => t && EN[t] && !sl[t] && !lineDead(EN[t]) && !(t === 'corvin' && (fate === 'desic' || fate === 'bargain')); let t = ok(TOMBKEEP[d]) ? TOMBKEEP[d] : null; for (let i = 0; i < TOMBROTA.length && !t; i++) { const c = TOMBROTA[(d / 5 + i) % TOMBROTA.length]; if (ok(c)) t = c; } return t || 'elder'; }
 function tombTable(d) {
   const t = d < 5 ? ['tombvamp'] : d < 10 ? ['stalker', 'cultist', 'thrall', 'warlock', 'shade'] : d < 15 ? ['stalker', 'elder', 'warlock', 'shade', 'cultist'] : ['elder', 'warlock', 'hybrid', 'stalker', 'shade', 'elder'];
@@ -238,7 +239,7 @@ function genTomb(depth) {
   addInter({ x: sx, z: sz + 1.8, r: 3, label: () => a.cleared ? 'Descend to floor ' + (depth + 1) : (boss ? 'Sealed until its keeper falls' : `Sealed: ${Math.max(0, a.need - a.killed)} more must fall`), act: () => { if (a.cleared) descend(); else { sfx('deny'); toast('The seal feeds on the dead. It is not satisfied yet.'); } } });
   // enemies and chests
   const table = tombTable(depth);
-  if (boss) { const p = rc(rooms[1]), kt = tombBoss(depth); a.keeper = kt; a.spawns.push({ x: p.x, z: p.z - 4, type: kt, boss: 1, elite: !EN[kt].boss }); a.need = 1; mkChest(p.x, p.z - 21, 'bc', a.lvl, true); a.chests[0].locked = true; a.chests[0].rig.g.visible = false;
+  if (boss) { const p = rc(rooms[1]), kt = tombBoss(depth); a.keeper = kt; a.spawns.push({ x: p.x, z: p.z - 4, type: kt, boss: 1, elite: !EN[kt].boss }); a.need = 1; mkChest(p.x + 5, p.z - 19, 'bc', a.lvl, true); a.chests[0].locked = true; a.chests[0].rig.g.visible = false;
     if (kt === 'sleeper') {   // the Sleeper's door: sealed by a witch two thousand years ago, and it opens for a witch of the Thorne line or for Odette's talisman
       const dz = W(23), box = [W(16) - TC / 2, dz - TC / 2, W(18) + TC / 2, dz + TC / 2], slabs = [16, 17, 18].map(c => place('tombwall', W(c), dz, 0, 1, G)); addBox(box, true); a.glows.push([W(17), dz + 3.2, 9, 0x6a4cff]); lamp(W(17), dz + 3.4, 0x7a5cff, 1.5, 15, 2.6);
       const door = addInter({ x: W(17), z: dz + 3, r: 6, open: false, label: () => door.open ? null : 'A sealed door, far older than the church', act: () => { let can = false; try { can = !!canOpenSleeper(); } catch (er) { can = false; }

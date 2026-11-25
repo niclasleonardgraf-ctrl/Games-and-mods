@@ -18,22 +18,25 @@ const nightsToFull = () => (4 - moonPhase() + 8) % 8;
 /* ---------------- dialogue ---------------- */
 let dq = null;
 function say(lines, choices, done) { dq = { lines, i: 0, choices, done }; for (const k in K) K[k] = false; mouse.l = mouse.r = false; J.x = J.y = 0; if (pl) { pl.buf = null; pl.block = false; } showDlg(); }
-function showDlg() { const l = dq.lines[dq.i], last = dq.i === dq.lines.length - 1; $('dlg').hidden = false; $('dwho').textContent = l[0]; $('dtext').textContent = l[1]; const c = $('dch'); c.innerHTML = ''; $('dnext').hidden = last && !!dq.choices;
+function showDlg() { const l = dq.lines[dq.i], last = dq.i === dq.lines.length - 1; $('dlg').hidden = false; $('dwho').textContent = l[0]; $('dtext').textContent = l[1]; const c = $('dch'), nx = $('dnext'); c.innerHTML = ''; c.scrollTop = 0; nx.hidden = last && !!dq.choices; nx.textContent = 'Tap, or press E';
   if (last && dq.choices) { dq.at = performance.now();   // a choice cannot be taken in the first third of a second: a click or a key already on its way to something else must not answer a question that cannot be unanswered
-    dq.choices.forEach((ch, i) => { const b = el('button', 'choice', (RT.touch ? '' : (i + 1) + '. ') + ch[0]); b.type = 'button'; b.onclick = ev => { ev.stopPropagation(); if (ev.isTrusted && dq && performance.now() - dq.at < 350) return; pickChoice(i); }; c.appendChild(b); }); } }
+    dq.choices.forEach((ch, i) => { const b = el('button', 'choice', (RT.touch || i > 9 ? '' : (i + 1) % 10 + '. ') + ch[0]); b.type = 'button'; b.onclick = ev => { ev.stopPropagation(); if (ev.isTrusted && dq && performance.now() - dq.at < 350) return; pickChoice(i); }; c.appendChild(b); });
+    // every choice is always in the list. When they do not all fit on the screen the list scrolls, and a line underneath says so.
+    if (c.scrollHeight > c.clientHeight + 4) { nx.hidden = false; nx.textContent = RT.touch ? 'More answers below. Drag the list.' : 'More answers below. Scroll the list, or use the arrow keys.'; } } }
 /* a dialogue has just closed: the key or click that closed it is not also a blow, and a button still held down is not the start of a heavy one */
 function dlgClosed() { RT.dlgT = performance.now(); mouse.l = false; if (pl) { pl.buf = null; pl.heavyUsed = true; } }
 function pickChoice(i) { if (!dq || !dq.choices || dq.i < dq.lines.length - 1 || !dq.choices[i]) return; const fn = dq.choices[i][1]; dq = null; $('dlg').hidden = true; dlgClosed(); sfx('ui'); fn(); }
 function advDlg() { if (!dq) return; if (dq.i < dq.lines.length - 1) { dq.i++; showDlg(); sfx('ui'); } else if (!dq.choices) { const d = dq.done; dq = null; $('dlg').hidden = true; dlgClosed(); d && d(); } }
 $('dlg').onclick = advDlg;
+$('dlg').addEventListener('wheel', e => e.stopPropagation(), { passive: true });   // the wheel over the dialogue scrolls the answers; it is not also the camera zoom
 
 /* ---------------- interaction ---------------- */
 /* What the Use key would do right now: the nearest thing in the area that has a use, or whatever actorInteract (35-player) says can be done to the nearest person or creature.
    Returns { label, act } or null. hold: nothing happens on a tap, the key has to be held (updPlayer does the work). also: a second thing a held key does meanwhile. */
 function findInteract() {
-  if (!pl || pl.dead || pl.feed) return null; let best = null, bd = 1e9;
-  for (const it of RT.area.inter) { const d = hyp(it.x - pl.x, it.z - pl.z); if (d < it.r && d < bd) { const l = it.label(); if (l) { bd = d; best = { label: l, act: it.act }; } } }
-  for (const n of actors) { if (n === pl || n.dead || !n.rig.g.visible) continue; const d = d2(pl, n); if (d > 8) continue; const o = actorInteract(n, d); if (!o || !o.label) continue;
+  if (!pl || pl.dead || pl.feed) return null; let best = null, bd = 1e9; const helpless = pl.fx.stun > 0 || pl.fx.charm > 0 || pl.shiftT > 0;   // seized, neck snapped, compelled or mid-change: no stairs, no doors, nobody to talk to
+  if (!helpless) for (const it of RT.area.inter) { const d = hyp(it.x - pl.x, it.z - pl.z); if (d < it.r && d < bd) { const l = it.label(); if (l) { bd = d; best = { label: l, act: it.act }; } } }
+  if (!helpless) for (const n of actors) { if (n === pl || n.dead || !n.rig.g.visible) continue; const d = d2(pl, n); if (d > 8) continue; const o = actorInteract(n, d); if (!o || !o.label) continue;
     const s = n.kind === 'npc' ? d - (n.npc.talk ? 1.5 : 1) : d * 0.01 - 9;                                                   // someone to talk to beats a signpost at the same distance; anything lying at your feet beats both
     if (s < bd) { bd = s; best = { label: o.label, act: o.act }; } }
   if (pl.fx.lodged > 0 && isVamp()) { const n = Math.ceil(pl.fx.lodged), l = 'pull the wood out of you' + (n > 1 ? ` (${n} lodged)` : ''); if (best) best.also = l; else best = { label: cap(l), act: () => { }, hold: 1 }; }   // wood stays in a vampire until it is dug out
@@ -43,6 +46,7 @@ function findInteract() {
 /* ---------------- HUD ---------------- */
 const bar = (id, v, m, txt) => { const b = $(id); b.firstElementChild.style.width = clamp(v / m * 100, 0, 100) + '%'; b.lastElementChild.textContent = txt != null ? txt : Math.max(0, Math.ceil(v)) + ' / ' + Math.round(m); };
 const ARW = [$('a0'), $('a1'), $('a2')]; let hudT = 0, miniT = 0, curInt = null, moonK = -1;
+const MAINQ = ['q_arrive', 'q_bump', 'q_council', 'q_bridge', 'q_tomb', 'q_warden', 'q_first', 'q_deeper', 'q_abyss'];   // the main story, which the quest tracker never lets the side work push off the screen
 /* the moon as it stands tonight: waxing lit on the right, waning on the left */
 function drawMoon(ph) {
   if (ph === moonK) return; moonK = ph; const c = $('moonc'); if (!c) return; const g = c.getContext('2d'), n = c.width, r = n / 2 - 2, f = [0, 0.25, 0.5, 0.75, 1, 0.75, 0.5, 0.25][ph] || 0, rx = Math.max(0.01, Math.abs(1 - 2 * f) * r);
@@ -87,8 +91,10 @@ function updHud(dt) {
   if (RT.touch) { const pG = $('pG'), pJ = $('pJ'), pR = $('pR'); pG.hidden = !shift; pG.classList.toggle('cd', pl.shiftCd > 0); $('pF').hidden = $('pB').hidden = pR.hidden = wf; pR.textContent = heals ? '✚' + heals : '✚'; const jt = wf ? 'Bite' : 'Attack'; if (pJ.textContent !== jt) pJ.textContent = jt; }
   if (wf && !RT.wolfTip) { RT.wolfTip = 1; toast((RT.touch ? 'Wolf form. BITE bites; hold it to pounce.' : 'Wolf form. Left mouse or J bites; hold it, or press K, to pounce.') + ' No weapons, no spells and no talking with paws. ' + (shift ? (RT.touch ? 'SHIFT' : 'G') + ' changes you back.' : 'Dawn changes you back.')); }
   // quest tracker
+  // three lines at most: the main story first, then whatever was taken up most recently (the journal has the rest)
   const qb = $('quests'); qb.innerHTML = ''; const tg = []; let n = 0;
-  for (const id in S.quests) { if (n++ >= 3) break; const q = QUESTS[id], st_ = S.quests[id], s = q && q.steps[st_.step]; if (!s) continue; const d = el('div', 'q'); d.appendChild(el('b', '', q.n)); d.appendChild(el('span', '', s.d + ((s.n || 1) > 1 ? ` (${Math.min(st_.n, s.n)}/${s.n})` : ''))); qb.appendChild(d); const t = qTarget(s); if (t && RT.area.id === 'world') tg.push(t); }
+  const qids = Object.keys(S.quests).filter(id => QUESTS[id] && QUESTS[id].steps[S.quests[id].step]).reverse().sort((a, b) => (MAINQ.includes(b) ? 1 : 0) - (MAINQ.includes(a) ? 1 : 0)).slice(0, 3);
+  for (const id of qids) { n++; const q = QUESTS[id], st_ = S.quests[id], s = q.steps[st_.step]; const d = el('div', 'q'); d.appendChild(el('b', '', q.n)); d.appendChild(el('span', '', s.d + ((s.n || 1) > 1 ? ` (${Math.min(st_.n, s.n)}/${s.n})` : ''))); qb.appendChild(d); const t = qTarget(s); if (t && RT.area.id === 'world') tg.push(t); }
   for (const bq of S.bounties) if (bq.acc && n++ < 4) { const d = el('div', 'q'); d.appendChild(el('b', '', 'Bounty · ' + bq.title)); d.appendChild(el('span', '', bq.done ? 'Collect at the notice board.' : `${bq.prog}/${bq.n}`)); qb.appendChild(d); }
   RT.targets = tg; for (let i = 0; i < 3; i++) { const a = ARW[i], o = tg[i]; if (!o || d2(o, pl) < 14 || RT.menu) { a.hidden = true; continue; } const an = Math.atan2(-(o.z - pl.z), o.x - pl.x); a.hidden = false; a.style.left = 50 + Math.cos(an) * 38 + '%'; a.style.top = 50 - Math.sin(an) * 32 + '%'; a.firstChild.style.transform = `rotate(${PI / 2 - an}rad)`; a.lastChild.textContent = Math.round(d2(o, pl)) + ' m'; }
   // prompt. Pulling lodged wood is a held key: the prompt fills as it comes out.
@@ -219,7 +225,11 @@ $('menu').addEventListener('click', e => {
     if (d.act === 'equip' && it) { equip(it); selItem = null; } else if (d.act === 'unequip' && it) { unequip(it.slot); selItem = null; } else if (d.act === 'salvage' && it) { salvage(it); selItem = null; } else if (d.act === 'salvageall') { S.inv.filter(i => i.rar === 0 && !boundIt(i)).forEach(salvage); }
     else if (d.act === 'sell' && it) { const i = S.inv.indexOf(it); if (i < 0 || boundIt(it)) { sfx('deny'); if (i >= 0) toast('It is bound to you. It cannot be sold or broken down.'); } else { S.inv.splice(i, 1); S.gold += sellPrice(it); selItem = null; sfx('coin'); } } else if (d.act === 'buy' && it) { const p = buyPrice(it); if (S.gold >= p && S.inv.length < 60) { S.gold -= p; const st = vendorStock(vendId); st.items.splice(st.items.indexOf(it), 1); S.inv.push(it); selItem = null; sfx('coin'); } else sfx('deny'); }
     else if (d.act === 'forge' && it) upgrade(it); else if (d.act === 'save') { save(true); toast('Saved.'); } else if (d.act === 'export') { const c = exportSave(); $('savecode').value = c; if (navigator.clipboard) navigator.clipboard.writeText(c).then(() => toast('Save code copied.'), () => { $('savecode').select(); }); return; }
-    else if (d.act === 'import') { if (importSave($('savecode').value)) location.reload(); else toast('That is not a save code.'); return; } else if (d.act === 'wipe') { if (b.dataset.sure) { try { for (const k of ['hollowmoon.save', 'hollowmoon.preturn', 'hollowmoon.preboss']) localStorage.removeItem(k); } catch (er) { } if (cloud) cloud.delete().catch(() => { }).then(() => location.reload()); else location.reload(); } else { b.dataset.sure = 1; b.textContent = 'Press again to erase this character'; } return; } }
+    else if (d.act === 'import') { if (b.dataset.busy) return; b.dataset.busy = 1; b.textContent = 'Loading…'; saveOff = true;   // from here until the page reloads nothing may write the character being played back over the code (the reload itself fires the save-on-hide hook)
+      const bad = () => { saveOff = false; delete b.dataset.busy; b.textContent = 'That is not a save code'; toast('That is not a save code.'); }; const slow = new Promise(r => setTimeout(r, 6000, true));   // importSave may answer at once or after the cloud copy is written; a write that never answers must not leave the game running with saving off
+      Promise.race([Promise.resolve().then(() => importSave($('savecode').value)), slow]).then(ok => { if (ok) location.reload(); else bad(); }, bad); return; }
+    else if (d.act === 'wipe') { if (b.dataset.sure) { saveOff = true;   // the same switch: a save during the reload would bring the erased character straight back
+      try { for (const k of ['hollowmoon.save', 'hollowmoon.preturn', 'hollowmoon.preboss']) localStorage.removeItem(k); } catch (er) { } if (cloud) { setTimeout(() => location.reload(), 6000); cloud.delete().catch(() => { }).then(() => location.reload()); } else location.reload(); } else { b.dataset.sure = 1; b.textContent = 'Press again to erase this character'; } return; } }
   renderMenu();
 });
 

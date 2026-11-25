@@ -84,11 +84,13 @@ button:focus-visible{outline:2px solid var(--candle);outline-offset:2px}
 body.touch #abar{display:none}body.touch #prompt{bottom:calc(var(--gb) + 236px)}body.touch #loot{bottom:calc(var(--gb) + 240px)}body.touch #feed{bottom:calc(var(--gb) + 280px)}
 
 .veil{position:fixed;inset:0;display:grid;place-items:center;background:rgba(6,8,14,.74);padding:20px max(16px,env(safe-area-inset-right,0px)) 20px max(16px,env(safe-area-inset-left,0px));overflow:auto;z-index:5}
-#dlg{position:fixed;left:50%;bottom:var(--gb);transform:translateX(-50%);width:min(94vw,680px);background:rgba(8,11,18,.94);border-top:2px solid var(--blood);padding:16px 20px 14px;z-index:7;cursor:pointer}
-#dwho{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--candle);font-weight:600}
-#dtext{font-family:var(--display);font-size:20px;line-height:1.35;margin:6px 0 10px;text-wrap:pretty}
-#dnext{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ash)}
-#dch{display:grid;gap:7px}
+#dlg{position:fixed;left:50%;bottom:var(--gb);transform:translateX(-50%);width:min(94vw,680px);background:rgba(8,11,18,.94);border-top:2px solid var(--blood);padding:16px 20px 14px;z-index:7;cursor:pointer;display:flex;flex-direction:column;max-height:calc(100% - var(--gb) - var(--gt))}
+#dwho{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--candle);font-weight:600;flex:none}
+#dtext{font-family:var(--display);font-size:20px;line-height:1.35;margin:6px 0 10px;text-wrap:pretty;flex:none;max-height:38vh;overflow-y:auto;touch-action:pan-y}
+#dnext{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ash);flex:none}
+/* the answers: every one is listed. When they do not all fit, this list is what scrolls; the speaker's line stays put above it. */
+#dch{display:grid;gap:7px;flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;padding:3px;margin:-3px;scrollbar-width:thin;scrollbar-color:rgba(233,224,207,.45) transparent}
+#dch:not(:empty)+#dnext{margin-top:9px}
 .choice{text-align:left;background:rgba(233,224,207,.07);border:1px solid rgba(233,224,207,.28);padding:9px 12px;font-family:var(--display);font-size:18px}
 .choice:hover{border-color:var(--blood-hi)}
 #black{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .5s;z-index:8;display:grid;place-content:center;gap:10px;font-family:var(--display);font-style:italic;font-size:21px;text-align:center;padding:24px}

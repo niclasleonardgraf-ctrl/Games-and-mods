@@ -18,7 +18,7 @@ const canMagic = () => S.origin === 'siphoner' ? S.species === 'human' || !!S.he
 function treeOpen(t) { return t === 'hunter' || (t === 'witch' ? canMagic() : t === 'wolf' ? isWolf() : t === 'vampire' ? isVamp() : t === 'original' ? isVamp() && !!S.original : false); }
 const inHollow = () => S.area === 'world' && !!pl && zoneAt(pl.x, pl.z).id === 'hollow';
 const moonPower = () => 1 - Math.abs(moonPhase() - 4) / 4;                            // 0 at the new moon, 1 at the full
-const isBound = it => !!(it && it.uniq && UNIQ[it.uniq] && UNIQ[it.uniq].bound);       // cannot be sold or salvaged
+const isBound = it => !!(it && it.uniq && UNIQ[it.uniq] && (UNIQ[it.uniq].bound || (it.uniq === 'moonring' && S.species === 'werewolf')));   // cannot be sold or salvaged: a daylight ring ever, a moonlight ring while you are the wolf it was made for (there is no second stone)
 const lineLinked = () => isVamp() && S.sire === 'corvin' && !S.unlinked && !S.original;   // dies within the hour if Corvin is truly killed
 const sireBound = () => isHybrid() && S.sire === 'corvin' && !S.original && (S.flags.shifts || 0) < 100;   // a sired hybrid cannot raise a hand to Corvin
 /* the sun: hybrids and anyone not (yet) a vampire are safe; a vampire needs a spelled daylight ring, and the Hundred switch it off inside Coven Hollow
@@ -52,7 +52,7 @@ function recalc() {
   const desic = vamp && pl && pl.blood <= 0 ? 1 + Math.min(2, Math.floor((pl.dryT || 0) / 60)) : 0, rage = pl && (wolfK || gene) ? clamp((pl.rage || 0) / 100, 0, 1) : 0, fury = wolfK && bf.fury > 0;
   if (dring) F.dring = dring.despelled ? 2 : 1; else if (F.dring && RT.started) { const r = mkUniq('daylight', L); if (F.dring === 2) r.despelled = true; S.inv.push(r); toast('The daylight ring is bound to you. It is back in your pocket.'); }   // bound: however it left, it comes back
   P.attr = a; P.maxBlood = (100 + L) * (1 + 0.06 * elder) * (orig ? 1.2 : 1); const fed = vamp && sk('v_fed') > 0 && !animal && pl && pl.blood > P.maxBlood * 0.7 ? sk('v_fed') : 0;
-  P.maxHp = (100 + 12 * (L - 1) + a.vig * 10 + st.hp) * (1 + S.asc.vit * 0.02) * (vamp ? 1.15 : wolfK ? 1.06 : 1) * (hyb ? 1.06 : 1) * (1 + 0.06 * elder) * (1 + 0.03 * might) * (wf ? 1.2 : 1) * (orig ? 1.25 * (1 + 0.04 * om) : 1) * (1 - 0.02 * Math.min(10, F.ringDeaths || 0));
+  P.maxHp = (100 + 12 * (L - 1) + a.vig * 10 + st.hp) * (1 + S.asc.vit * 0.02) * (vamp ? 1.15 : wolfK ? 1.06 : 1) * (hyb ? 1.06 : 1) * (1 + 0.06 * elder) * (1 + 0.03 * might) * (wf ? 1.2 : 1) * (orig ? 1.25 * (1 + 0.04 * om) : 1);   // a Founder's Ring takes its price from the mind, not the body (playerDeath, respawn)
   P.maxSta = 100 + a.vig * 2 + st.st + sk('h_cond') * 10 + (vamp ? 20 : wolfK ? 10 : gene ? 5 : 0); P.maxFoc = 50 + a.wil * 4 + st.fo + (magic ? sk('w_attune') * 10 : 0);
   P.staRegen = 24 * (1 + 0.08 * sk('h_cond')) * (vamp ? 1.2 : wolfK ? 1.1 : 1); P.focRegen = siph ? 0 : (2.5 + a.wil * 0.08) * (1 + 0.12 * chan) * (drawn ? 2 : 1);   // a siphoner makes none; a Heretic's comes out of her blood (tickClock)
   /* what is in your hands. In wolf form: teeth, as dangerous as the weapon you left behind. A staff is only a stick to anyone without magic. */
@@ -61,8 +61,9 @@ function recalc() {
   P.wmat = wf ? 'bite' : !w ? 'steel' : w.uniq === 'whiteoak' ? 'whiteoak' : staff && !magic ? 'wood' : wb.mat;
   /* damage: bonus is additive and counts for blows and shots; pen multiplies everything, spells too */
   const ascP = 1 + S.asc.pow * 0.02, signet = vamp && hasUniq('corvin') ? Math.min(20, Math.max(0, S.day - (F.turned || S.day))) / 100 : 0;
-  const bonus = 0.06 * elder + (orig ? 0.2 + 0.08 * om : 0) + 0.04 * fed + (off ? 0.15 + 0.05 * sk('v_ripper') : 0) + signet + mp * (0.1 + 0.06 * moonSk) + rage * (wolfK ? 0.15 : 0.05) + (fury ? 0.2 + 0.1 * sk('l_rage') : 0) + (wf ? 0.2 + 0.15 * mp : ringMoon ? 0.2 : 0);
-  const pen = (animal ? 0.9 : 1) * (1 - 0.15 * desic) * (guilt ? 0.7 : 1) * (vervd ? 0.85 : 1) * (wbaned ? 0.8 : 1) * (venom ? 0.9 - 0.25 * clamp(1 - (S.venomUntil - now) / 24, 0, 1) : 1);
+  const bonus = 0.06 * elder + (orig ? 0.2 + 0.08 * om : 0) + 0.04 * fed + (off ? 0.15 + 0.05 * sk('v_ripper') : 0) + signet + mp * (0.1 + 0.06 * moonSk) + rage * (wolfK ? 0.15 : 0.05) + (fury ? 0.2 + 0.1 * sk('l_rage') : 0) + (wf ? 0.2 + 0.15 * mp : ringMoon ? 0.2 : 0)
+    + (hasUniq('ripper') ? 0.02 * clamp(Math.floor((100 - S.humanity) / 10) || 0, 0, 10) : 0);   // Ripper's Band: 2% for every ten humanity lost
+  const pen = (animal ? 0.9 : 1) * (1 - 0.15 * desic) * (guilt ? 0.7 : 1) * (vervd ? 0.85 : 1) * (wbaned ? 0.8 : 1) * (venom ? (orig ? 0.9 : 0.9 - 0.25 * clamp(1 - (S.venomUntil - now) / 24, 0, 1)) : 1);   // venom is a day's slow death to a vampire, a flat fever to an Original
   P.meleeM = (1 + a.mig * 0.02 + st.dmg / 100 + 0.06 * sk('h_weapon') + (vamp ? 0.1 + 0.05 * sk('v_pred') : 0) + (wolfK ? (vamp ? 0.04 : 0.05) + (wf ? 0.08 : 0.04) * might : gene ? 0.03 : 0) + (tr ? 0.03 : 0) + bonus) * ascP * pen;
   P.rangedM = (1 + a.fin * 0.02 + st.dmg / 100 + 0.08 * sk('h_marks') + bonus) * ascP * pen;
   P.spellBase = (7 * lvlScale(L) + (staff && magic ? up(w, w.dmg) * 0.7 : 0)) * (1 + a.wil * 0.025 + st.spell / 100 + (magic ? 0.08 * sk('w_attune') + (sk('w_express') ? 0.3 : 0) + (drawn ? 0.06 * chan : 0) + (hundred ? 1 : 0) : 0) + (off ? 0.15 + 0.05 * sk('v_ripper') : 0)) * ascP * pen;
@@ -74,8 +75,8 @@ function recalc() {
   P.reload = (1 - 0.05 * sk('h_marks')) / (1 + st.as / 200); P.parryWin = 0.2 + 0.035 * sk('h_parry');
   P.xpM = 1 + st.xp / 100; P.goldM = 1 + st.gold / 100 + S.asc.fort * 0.02; P.mf = st.mf + S.asc.fort * 2; P.vsW = st.vsW; P.vsS = st.vsS; P.burn = st.burn; P.thorns = st.thorns;
   P.vsV = st.vsV + (five ? 10 + Math.min(40, Math.floor((F.mark || 0) / 2)) : 0);                                    // the Hunter's Mark
-  /* healing. healM scales a vampire's Healing Factor and out-of-combat mending: nothing closes round lodged wood, or under vervain, venom or starvation */
-  P.healM = vamp ? (fx.lodged > 0 || vervd || venom || desic ? 0 : animal ? 0.5 : 1) : wbaned ? 0 : 1;
+  /* healing. healM scales a vampire's Healing Factor and out-of-combat mending: nothing closes round lodged wood, or under vervain, venom or starvation (an Original heals through the venom fever) */
+  P.healM = vamp ? (fx.lodged > 0 || vervd || (venom && !orig) || desic ? 0 : animal ? 0.5 : 1) : wbaned ? 0 : 1;
   P.regen = st.regen * (vamp ? P.healM : 1) + (wolfK && !wbaned ? P.maxHp * 0.002 * sk('l_regen') * (wf ? 1.5 : 1) : 0);
   /* for the other files: blood drain rate, starvation stage 0-3, moon 0-1, venom carried by your bite (fraction of the bite per second, 0 = none), shifting cost, rage gain, senses, compel length */
   P.hunger = vamp ? (F.bourbonT > now ? 0.5 : 1) : 0; P.desic = desic; P.moon = mp; P.venom = wolfK && (wf || hyb || ringMoon) ? (sk('l_venom') ? 0.4 + 0.2 * sk('l_venom') : 0.3) : 0;
@@ -92,7 +93,7 @@ function sysStatus() {
   if (F.vblood) out.push('Vampire blood ' + Math.ceil(F.vbloodT / 60) + 'h'); if (F.hblood) out.push('Blood of the First ' + Math.ceil(F.hbloodT / 60) + 'h');
   if (S.venomUntil > now) out.push((S.original ? 'Venom fever ' : 'Werewolf venom ') + h(S.venomUntil)); if (S.curseUntil > now) out.push("Hunter's Curse " + h(S.curseUntil)); if (F.lineDeathAt > now) out.push('The line is dying');
   if (pl && pl.wolf) out.push('Wolf'); if (P.desic) out.push(['', 'Starving', 'Weakening', 'Desiccating'][P.desic]); if (S.switchOff) out.push('Humanity off'); if (F.guiltT > now) out.push('Guilt');
-  if (isVamp() && S.diet === 'animal') out.push('Animal blood'); if (F.bourbonT > now) out.push('Bourbon'); if (F.vervUntil > now && !isVamp()) out.push('Vervain ' + h(F.vervUntil)); if (F.sageT > now) out.push('Sage smoke'); if (F.hundredT > now) out.push('The Hundred');
+  if (isVamp() && S.diet === 'animal') out.push('Animal blood'); if (F.bourbonT > now) out.push('Bourbon'); if (F.vervUntil > now && !isVamp()) out.push('Vervain ' + h(F.vervUntil)); if (F.ringHaunt > now && S.species === 'human') out.push('Seeing things ' + h(F.ringHaunt)); if (F.sageT > now) out.push('Sage smoke'); if (F.hundredT > now) out.push('The Hundred');
   if (sireBound()) out.push('Sired · ' + (F.shifts || 0) + '/100'); if (pl && pl.fx.lodged > 0) out.push('Wood lodged'); if (pl && pl.fx.wolfsbane > 0) out.push('Wolfsbane'); const dr = Object.values(S.eq).find(i => i && i.uniq === 'daylight'); if (dr && dr.despelled) out.push('Ring unspelled');
   return out;
 }
@@ -115,7 +116,7 @@ const itemValue = it => Math.round((6 + it.lvl * 3.2) * Math.pow(1.75, Math.min(
 function itemLines(it) { const b = BASES[it.base], l = []; if (it.dmg) l.push(`${Math.round(up(it, it.dmg))} damage` + (b.slot === 'weapon' ? ` · ${b.cls === 'fast' ? 'fast' : b.cls === 'med' ? 'balanced' : b.cls === 'slow' ? 'heavy' : 'a witch casts with it, anyone else swings it'} · ${it.uniq === 'whiteoak' ? 'white oak' : b.mat}` : ` · ${b.mat} · ${b.cd}s reload`));
   if (it.def) l.push(`${Math.round(up(it, it.def))} armour`); if (it.hp) l.push(`+${Math.round(up(it, it.hp))} health`); if (it.st) l.push(`+${Math.round(up(it, it.st))} stamina`); if (it.fo) l.push(`+${Math.round(up(it, it.fo))} focus`);
   for (const [k, v] of it.aff) if (v) l.push(AFFD[k].replace('{v}', v)); if (it.uniq) l.push(UNIQ[it.uniq].d); if (it.despelled) l.push('The spell has been taken out of it. It is only a stone until the witch who made it relents.'); return l; }
-function addItem(it, quiet) { if (S.inv.length >= 60) { toast('Your pack is full.'); return false; } S.inv.push(it); if (!quiet) lootToast(it.name + (it.up ? ' +' + it.up : ''), RAR[it.rar].c); sfx(it.rar >= 3 ? 'rare' : 'loot'); return true; }
+function addItem(it, quiet, force) { if (S.inv.length >= 60 && !force) { toast('Your pack is full.'); return false; }   // force: a quest reward, which is never lost to a full pack (it goes in over the limit) S.inv.push(it); if (!quiet) lootToast(it.name + (it.up ? ' +' + it.up : ''), RAR[it.rar].c); sfx(it.rar >= 3 ? 'rare' : 'loot'); return true; }
 function addCons(k, n = 1, quiet) { k = CONS[k] ? k : OLDID[k]; if (!CONS[k]) { console.warn('unknown supply', k); return; } S.cons[k] = (S.cons[k] || 0) + n; if (!quiet) lootToast(CONS[k].n + (n > 1 ? ' ×' + n : ''), '#d8d0c0'); }
 function equip(it) {
   const i = S.inv.indexOf(it); if (i < 0) return; if (pl.wolf) { toast('Not with paws.'); sfx('deny'); return; } if (it.lvl > S.lvl + 3) { toast(`You need to be level ${it.lvl - 3} to use that.`); sfx('deny'); return; }
@@ -158,7 +159,7 @@ function useCons(k) {
       S.cons[k]--; recalc(); qEvent('use', k); if (!(S.cons.hblood > 0) && !S.flags.bloodTo) { S.flags.bloodTo = 'self'; qEvent('flag', 'blood'); } return true; }
     case 'dblood': if (tr && tr.to === 'hybrid') return askTurn(k, "Elise Gilroy's blood. Drink it and you are a hybrid: wolf and vampire both, and sired to Corvin until you break it. There is no going back."); return false;
     case 'cure': if (tr) { toast('There is nothing to cure yet. You are not one of them until you feed.'); return false; } if (!vamp) { toast('It would do nothing to you. It is for the dead.'); return false; } if (RT.menu) closeMenu();
-      say([['', `The Cure. One dose. Drink it and you are ${isHybrid() ? 'a werewolf again, and only that' : 'human again'}, for good: everything the dead can do goes with it, and no blood will ever turn you after this.`]], [['Drink it.', () => { if (!(S.cons.cure > 0) || !isVamp() || RT.blk) return; S.cons.cure--; cureVampire(); }], ['Not yet.', () => { }]]); return true;
+      say([['', `The Cure. One dose. Drink it and you are ${isHybrid() ? 'a werewolf again, and only that' : 'human again'}, for good: everything the dead can do goes with it, and no blood will ever turn you after this.`]], [['Drink it.', () => { if (!(S.cons.cure > 0) || !isVamp() || RT.blk) return; cureVampire(true); }], ['Not yet.', () => { }]]); return true;   // the dose is spent when the change is made, not before (cureVampire)
     default: return false;
   } S.cons[k]--; qEvent('use', k); return true;
 }
@@ -195,14 +196,17 @@ function refundTree(t) { let n = 0; for (const k in S.skills) if (!SK[k] || SK[k
    Nothing here happens to the player by accident: the curse wakes only through triggerCurse (a deliberate killing), a transition starts only after they drank the blood,
    and it completes only when they choose to feed. Letting it lapse puts the story back to the hour before they died. */
 function blackout(lines, fn, hold = 2600) { if (RT.menu) closeMenu(); RT.blk = true; const b = $('black'); b.innerHTML = ''; lines.forEach(l => b.appendChild(el('p', '', l))); b.classList.add('on'); setTimeout(() => { fn && fn(); b.classList.remove('on'); RT.blk = false; }, hold + lines.length * 900); }
-function keepSnap(key) { const j = snapshot(); (RT.snaps = RT.snaps || {})[key] = j; try { localStorage.setItem(key, j); } catch (e) { } }
-function hasSnap(key) { if (RT.snaps && RT.snaps[key]) return true; try { return !!localStorage.getItem(key); } catch (e) { return false; } }
+function keepSnap(key) { if (saveOff) return; const j = snapshot(); (RT.snaps = RT.snaps || {})[key] = j; try { localStorage.setItem(key, j); } catch (e) { } }
+/* the saved hour under key, if it is this character's: one left behind by another character (a new game on top, a loaded save code) is not ours to go back to */
+function snapOf(key) { let o = null; try { o = JSON.parse(localStorage.getItem(key)); } catch (e) { } if ((!o || o.seed !== S.seed) && RT.snaps && RT.snaps[key]) try { o = JSON.parse(RT.snaps[key]); } catch (e) { } return o && o.seed === S.seed ? o : null; }
+function hasSnap(key) { return !!snapOf(key); }
 function dropSnap(key) { if (RT.snaps) delete RT.snaps[key]; try { localStorage.removeItem(key); } catch (e) { } }
 function standUp() { pl.dead = false; pl.deadT = 0; pl.fx = {}; pl.act = null; pl.sw = null; pl.block = false; pl.feed = null; pl.kx = pl.kz = 0; pl.dryT = 0; pl.rig.g.rotation.set(0, 0, 0); }
 /* put the saved hour back (a true death). Returns false if there is nothing to go back to. */
 function rewind(key, note) {
-  let o = null; try { o = JSON.parse(localStorage.getItem(key)); } catch (e) { } if (!o && RT.snaps && RT.snaps[key]) try { o = JSON.parse(RT.snaps[key]); } catch (e) { } if (!o) return false; const deaths = S.stats.deaths + 1; if (!applySave(o)) return false; dropSnap(key);
-  S.flags.vblood = S.flags.vbloodT = S.flags.hblood = S.flags.hbloodT = S.flags.lineDeathAt = 0; S.transition = null; S.stats.deaths = deaths; standUp(); shiftForm(false); skipTo(8);
+  const o = snapOf(key); if (!o || o.seed !== S.seed) { dropSnap(key); return false; } const deaths = S.stats.deaths + 1; if (!applySave(o)) return false; dropSnap(key);
+  S.flags.vblood = S.flags.vbloodT = S.flags.hblood = S.flags.hbloodT = S.flags.lineDeathAt = 0; S.transition = null; S.stats.deaths = deaths; standUp(); shiftForm(false);
+  if (!(isVamp() && !daylightSafe())) skipTo(8); else if (!(S.clock >= 20.6 || S.clock < 5)) skipTo(20.6);   // a vampire with no working ring is not put back in the morning sun (respawn does the same)
   recalc(); refreshGear(); pl.hp = P.maxHp; pl.sta = P.maxSta; pl.foc = Math.min(S.foc, P.maxFoc); pl.blood = Math.min(S.blood, P.maxBlood); enterArea('world', S.area === 'tomb' ? { x: -130, z: -164 } : HOME); RT.paused = false; save(); if (note) toast(note); return true;
 }
 /* the werewolf curse: inherited, and woken by taking a human life. Called by the deliberate finishing blow, never by an accident. */
@@ -227,11 +231,13 @@ function beginTransition(to, how) {
   return true;
 }
 const turnVampire = how => beginTransition('vampire', how);   // old name, kept for callers
+/* a living person's vervain does not stay with the dead: the locket comes off (equip refuses it to a vampire), and what was drunk no longer shields the mind */
+function shedVervain() { S.flags.vervUntil = 0; const lk = S.eq.amulet; if (lk && lk.uniq === 'vlocket') { S.eq.amulet = null; S.inv.push(lk); setTimeout(() => toast("Elspeth's locket burns your throat. You tear it off."), 2600); } }
 /* the first human blood (or, for a hybrid, the doppelgänger's): the change is finished and cannot be undone except by the Cure */
 function completeTransition() {
   const t = S.transition; if (!t || !pl) return false; const hyb = t.to === 'hybrid'; S.species = t.to; S.sire = t.sire || 'corvin'; S.unlinked = !!(S.flags.slain && S.flags.slain[S.sire]); S.transition = null; S.flags.turned = S.day; S.diet = 'human'; S.exposure = 0; S.switchOff = false; dropSnap('hollowmoon.preturn');
   const lost = S.origin === 'witch' ? refundTree('witch') : 0; if (S.origin === 'siphoner') S.heretic = true; if (S.skills.h_five) { S.sp += S.skills.h_five; delete S.skills.h_five; } S.flags.mark = 0; S.sp += 2;
-  const lk = S.eq.amulet; if (lk && lk.uniq === 'vlocket') { S.eq.amulet = null; S.inv.push(lk); setTimeout(() => toast("Elspeth's locket burns your throat. You tear it off."), 2600); }
+  shedVervain(); if (hyb) S.flags.shifts = 0;   // the sire bond starts now: changes made as a plain werewolf do not count against it
   recalc(); pl.hp = P.maxHp; pl.blood = Math.max(pl.blood || 0, 40); pl.dryT = 0; refreshGear(); sfx('turn'); RT.flashV = 0.35; banner(hyb ? 'Hybrid' : S.heretic ? 'Heretic' : 'Vampire', hyb ? 'Wolf and vampire both' : 'The Vampire tree is open');
   toast(hyb ? 'It is done. You are a hybrid: the sun cannot touch you, you change when you choose, and your bite is venom. You owe Corvin for it, and you will feel that.' : 'It is done. You are a vampire. Until a witch makes you a daylight ring, the sun will kill you.');
   if (lost) setTimeout(() => toast(`The magic has gone out of you for good. ${lost} skill points returned.`), 5400); else if (S.heretic) setTimeout(() => toast('You still siphon. Your spells now feed on your own blood.'), 5400);
@@ -252,15 +258,15 @@ function becomeOriginal() {
   if (S.original || S.flags.cured || !pl) return false; const was = S.species; S.original = true; S.transition = null; dropSnap('hollowmoon.preturn'); if (was === 'human') S.species = 'vampire'; else if (was === 'werewolf') S.species = 'hybrid';
   if (!isVamp()) { S.original = false; return false; } S.sire = null; S.unlinked = true; S.flags.lineDeathAt = 0; S.venomUntil = 0; if (!S.flags.turned) S.flags.turned = S.day; S.diet = 'human';
   if (was === 'human' || was === 'werewolf') { if (S.origin === 'witch') refundTree('witch'); if (S.origin === 'siphoner') S.heretic = true; if (S.skills.h_five) { S.sp += S.skills.h_five; delete S.skills.h_five; } S.flags.mark = 0; }
-  S.sp += 2; recalc(); pl.hp = P.maxHp; pl.blood = P.maxBlood; refreshGear(); sfx('turn'); RT.flashV = 0.4; banner('Original', 'The first of a new line'); toast('Nothing but white oak can end you now. Wood, fire and a broken neck only put you down for a while. The sun and vervain still burn.'); diary('original'); codex('original'); qEvent('original'); save(); return true;
+  shedVervain(); S.sp += 2; recalc(); pl.hp = P.maxHp; pl.blood = P.maxBlood; refreshGear(); sfx('turn'); RT.flashV = 0.4; banner('Original', 'The first of a new line'); toast('Nothing but white oak can end you now. Wood, fire and a broken neck only put you down for a while. The sun and vervain still burn.'); diary('original'); codex('original'); qEvent('original'); save(); return true;
 }
 /* the Cure: human again for good (a hybrid goes back to the wolf it was). Whoever takes it can never be turned again. */
-function cureVampire() {
+function cureVampire(spend) {   // spend: take the dose out of the pack, in the same step as the change, so no save can hold one without the other
   if (!isVamp()) return false;
   blackout(['It tastes of nothing at all.', 'Then everything hurts, the ordinary way.', 'The sun comes through the window and you let it.'], () => {
-    const wolf = S.species === 'hybrid'; S.species = wolf ? 'werewolf' : 'human'; S.heretic = false; S.original = false; S.transition = null; S.sire = null; S.unlinked = false; S.switchOff = false; S.venomUntil = 0; S.curseUntil = 0; S.diet = 'human'; S.flags.cured = 1; S.flags.lineDeathAt = 0; S.flags.guiltT = 0;
+    if (spend) S.cons.cure = Math.max(0, (S.cons.cure || 0) - 1); const wolf = S.species === 'hybrid'; S.species = wolf ? 'werewolf' : 'human'; S.heretic = false; S.original = false; S.transition = null; S.sire = null; S.unlinked = false; S.switchOff = false; S.venomUntil = 0; S.curseUntil = 0; S.diet = 'human'; S.flags.cured = 1; S.flags.lineDeathAt = 0; S.flags.guiltT = 0;
     const back = refundTree('vampire') + refundTree('original'); S.humanity = 100; S.exposure = 0; if (pl.dryT) pl.dryT = 0; recalc(); pl.hp = P.maxHp; refreshGear(); diary('cured'); codex('cure');
-    toast(`You are ${wolf ? 'a werewolf again, and only that' : 'human again'}. ${back} skill points returned. No blood will ever turn you now.`); if (canMagic()) setTimeout(() => toast('The craft has come back with your pulse.'), 5400); qEvent('cured'); save();
+    toast(`You are ${wolf ? 'a werewolf again, and only that' : 'human again'}. ${back} skill points returned. No blood will ever turn you now.`); if (canMagic()) setTimeout(() => toast('The craft has come back with your life.'), 5400); qEvent('cured'); save();
   });
   return true;
 }
@@ -286,13 +292,13 @@ function flipSwitch(force) {
 /* starved to nothing: not death. Someone finds you; a day goes by. */
 function desiccate() {
   if (RT.blk || !pl || pl.dead) return; sfx('die');
-  blackout(['The hunger stops hurting. That is the bad sign.', 'Your hands have gone grey. They will not close.', 'Someone lifts you. It is a day before you can open your eyes.'], () => { const t0 = absHours(); skipTo(20.6); if (absHours() - t0 < 12) newDay(); standUp(); shiftForm(false); enterArea('world', { x: 236, z: -47 }); recalc(); pl.blood = 35; pl.hp = P.maxHp * 0.5; S.exposure = Math.max(0, S.exposure - 20); codex('desiccation'); save(); toast("Ambrose found you. Gault fed you from a bag, a spoonful at a time. Do not let it get that far again."); });
+  blackout(['The hunger stops hurting. That is the bad sign.', 'Your hands have gone grey. They will not close.', 'Someone lifts you. It is a day before you can open your eyes.'], () => { const t0 = absHours(); skipTo(20.6); if (absHours() - t0 < 12) newDay(); standUp(); shiftForm(false); enterArea('world', { x: 236, z: -47 }); recalc(); pl.blood = 35; pl.hp = P.maxHp * 0.5; S.exposure = Math.max(0, S.exposure - 20); codex('desiccation'); save(); toast(S.flags.ambroseDead ? 'Gault found you on the manor road. He fed you from a bag, a spoonful at a time. Do not let it get that far again.' : 'Ambrose found you. Gault fed you from a bag, a spoonful at a time. Do not let it get that far again.'); });
 }
 /* the Lockwood cellar: a triggered werewolf who chains up before moonrise spends the night there and hurts nobody */
 function chainUp() {
   if (S.species !== 'werewolf') return toast(isHybrid() ? 'You choose when you change. The chains are for those who cannot.' : 'Old chains, bolted into the stone. They are not for you.');
   if (pl.wolf) return toast('Too late for chains. You have no hands.'); if (!fullTonight()) return toast('The moon is not full tonight. You do not need these.'); if (hasUniq('moonring')) return toast('The ring keeps the moon off you. You do not need these.');
-  blackout(['You lock the chains and throw the key where hands can reach it and paws cannot.', 'Every bone. Then nothing you will remember.', 'Morning. The door is scored from the inside. Nobody is dead.'], () => { S.flags.chained = S.day; skipTo(6.6); shiftForm(false); S.flags.chained = S.day; S.flags.moons = (S.flags.moons || 0) + 1; standUp(); recalc(); pl.hp = P.maxHp * 0.7; pl.sta = P.maxSta; qEvent('chained'); save(); }, 900);
+  blackout(['You lock the chains and throw the key where hands can reach it and paws cannot.', 'Every bone. Then nothing you will remember.', 'Morning. The door is scored from the inside. Nobody is dead.'], () => { S.flags.chained = S.day; if (S.clock >= 6 && S.clock < 6.6) S.clock = 6.6; skipTo(6.6); shiftForm(false); S.flags.chained = S.day;   // from 06:00 the moon in question is tonight's: it is always the next morning you wake to S.flags.moons = (S.flags.moons || 0) + 1; standUp(); recalc(); pl.hp = P.maxHp * 0.7; pl.sta = P.maxSta; qEvent('chained'); save(); }, 900);
 }
 /* a living witch at the Hollow altar may borrow the Hundred: double spell power for 40 seconds, paid for in blood from the nose */
 function channelHundred() {
@@ -304,7 +310,7 @@ function channelHundred() {
 function startQuest(id) { if (S.quests[id] || S.done[id] || !QUESTS[id]) return; S.quests[id] = { step: 0, n: 0 }; sfx('quest'); banner(QUESTS[id].n, 'New quest'); const s = QUESTS[id].steps[0]; if (s.on) s.on(); checkHave(); }
 function advQuest(id) {
   const q = QUESTS[id], st = S.quests[id]; st.step++; st.n = 0;
-  if (st.step >= q.steps.length) { delete S.quests[id]; S.done[id] = 1; const r = q.rew || {}; if (r.xp) gainXp(r.xp * (1 + S.lvl * 0.12)); if (r.gold) { S.gold += r.gold; } if (r.sp) S.sp += r.sp; if (r.item) addItem(r.item()); if (r.cons) for (const k in r.cons) addCons(k, r.cons[k]);
+  if (st.step >= q.steps.length) { delete S.quests[id]; S.done[id] = 1; const r = q.rew || {}; if (r.xp) gainXp(r.xp * (1 + S.lvl * 0.12)); if (r.gold) { S.gold += r.gold; } if (r.sp) S.sp += r.sp; if (r.item) addItem(r.item(), false, true); if (r.cons) for (const k in r.cons) addCons(k, r.cons[k]);
     sfx('level'); banner(q.n, 'Quest complete' + (r.gold ? ` · ${r.gold} gold` : '') + (r.sp ? ` · ${r.sp} skill point${r.sp > 1 ? 's' : ''}` : '')); if (q.end) q.end(); if (q.next) [].concat(q.next).forEach(n => startQuest(n)); save(); }
   else { sfx('quest'); const s = q.steps[st.step]; toast('Quest updated: ' + s.d); if (s.on) s.on(); checkHave(); }
 }
@@ -312,7 +318,7 @@ function advQuest(id) {
 function sysEvent(type, a) {
   if (type === 'kill' && a && !a.phantom) { const fam = a.fam, dead = fam === 'vampire' || fam === 'hybrid' || fam === 'original';
     if (dead && sk('h_five') && S.species === 'human') { S.flags.mark = (S.flags.mark || 0) + 1; if (S.flags.mark % 10 === 0) toast(`The mark has grown. ${S.flags.mark} of them.`); }
-    if (a.def && a.def.five && isVamp()) hunterCurse(); if (S.switchOff && !dead && fam !== 'spirit' && fam !== 'animal') S.flags.offKills = (S.flags.offKills || 0) + 1;
+    if (S.switchOff && !dead && fam !== 'spirit' && fam !== 'animal') S.flags.offKills = (S.flags.offKills || 0) + 1;
     if ((fam === 'human' || fam === 'witch') && a.mercyKill) triggerCurse(); }
   else if (type === 'shift' && isWolf()) { const n = S.flags.shifts = (S.flags.shifts || 0) + 1; if (isHybrid() && S.sire === 'corvin' && !S.original) { if (n === 100) { toast('A hundred times you have broken every bone on purpose. It no longer hurts, and you owe him nothing. The sire bond is gone.'); banner('Unsired', 'You can raise a hand to Corvin'); diary('unsired'); codex('sirebond'); recalc(); } else if (n % 25 === 0) toast(`${n} changes. The bond is thinner than it was.`); } }
 }
@@ -332,8 +338,11 @@ function qTarget(s) { if (s.at) return s.at; if (s.t === 'talk') { const n = NPC
 const typeOk = t => { const d = EN[t]; return !!d && (!d.full || (fullMoon() && isNight())) && (!d.need || !!S.flags[d.need]) && !lineDead(d); };
 function spawnTable(z) { const night = isNight(), t = night ? (fullMoon() && z.full ? z.full : z.night) : z.day; return (t || []).filter(typeOk); }
 const plural = t => EN[t].pl || EN[t].n + 's';
+const typeEver = t => { const d = EN[t]; return !!d && (!d.need || !!S.flags[d.need]) && !lineDead(d); };   // can this kind of thing still be met at all (typeOk asks whether it is out right now)
+/* once a day, in the morning. Notices you took stay up until paid, unless what they ask for no longer exists (a dead Original's line): those come down, so the board cannot fill with work nobody can do. */
 function genBounties() {
-  if (S.bountyDay === S.day && S.bounties.length) return; S.bountyDay = S.day; S.bounties = S.bounties.filter(b => b.acc && !b.paid); const L = S.lvl;
+  if (S.bountyDay === S.day) return; S.bountyDay = S.day; const mine = S.bounties.filter(b => b.acc && !b.paid); S.bounties = mine.filter(b => b.done || b.k === 'floor' || typeEver(b.type)); const L = S.lvl;
+  if (S.bounties.length < mine.length) toast('A notice you took has come down from the board. There is nothing of that kind left to hunt.');
   /* the Council pays for monsters: nothing peaceful, nobody who leaves ordinary people alone (the pack, its own hunters), nothing that only exists under a full moon */
   const fair = z => (z.night || []).concat(z.day || []).filter(t => { const d = EN[t]; return !d.peaceful && !d.onlyVs && !d.full && (!d.need || S.flags[d.need]) && !lineDead(d); }), zs = ZONES.filter(z => !z.safe && z.night && z.lvl <= L + 6 && fair(z).length); let guard = 0;
   while (zs.length && S.bounties.length < 4 && guard++ < 30) { const k = chance(0.5) ? 'kill' : chance(0.6) ? 'elite' : 'floor', z = pick(zs), type = pick(fair(z)), id = 'b' + S.day + '_' + guard, lv = Math.max(z.lvl, Math.round(L * 0.9));
@@ -342,6 +351,7 @@ function genBounties() {
       text: k === 'kill' ? `Put down ${n} ${plural(type)}. They have been seen around ${z.n}${dark ? ' after dark. Wood through the heart, or fire, or they get back up' : ''}.` : k === 'elite' ? `Something worse than usual is loose at ${z.n}${dark ? ', after dark' : ''}. End it.` : `The Council wants eyes on floor ${n} of the Tomb. Clear it.`, title: k === 'kill' ? `Cull: ${plural(type)}` : k === 'elite' ? `Hunt at ${z.n}` : `Survey: floor ${n}` }); }
 }
 function acceptBounty(b) { b.acc = true; sfx('quest'); if (b.k === 'elite') b.spawn = true; toast('Bounty accepted: ' + b.title); }
+function dropBounty(b) { if (!b || !b.acc || b.done) return false; S.bounties = S.bounties.filter(x => x !== b); sfx('ui'); toast('You take the notice down: ' + b.title + '.'); return true; }   // give up a notice you took and have not finished; nothing replaces it until morning
 function payBounty(b) { b.paid = true; S.gold += b.gold; gainXp(b.xp); sfx('coin'); if (b.k !== 'kill') dropLoot(pl.x, pl.z, S.lvl, { n: 1, bias: 1 }); S.bounties = S.bounties.filter(x => x !== b); toast(`Bounty paid: ${b.gold} gold.`); S.flags.bounties = (S.flags.bounties || 0) + 1; }
 
 /* ---------------- vendors ---------------- */
@@ -363,7 +373,7 @@ function enterArea(id, o = {}) {
 }
 function tombMenu() {
   const opts = [['Floor 1', () => goTomb(1)]]; for (let f = 6; f <= S.deepest + 1; f += 5) opts.push([`Floor ${f} (past the keeper of floor ${f - 1})`, () => goTomb(f)]); while (opts.length > 5) opts.splice(1, 1);
-  say([['The Tomb', `Stairs go down into the dark under Fell Chapel. ${S.deepest ? 'Deepest floor cleared: ' + S.deepest + '.' : 'The air coming up is cold and smells of iron.'}`]], opts.concat([['Not yet.', () => { }]]));
+  say([['The Tomb', `Stairs go down into the dark under Fell's Church.${S.deepest ? 'Deepest floor cleared: ' + S.deepest + '.' : 'The air coming up is cold and smells of iron.'}`]], opts.concat([['Not yet.', () => { }]]));
 }
 function goTomb(d) { S.runs++; blackout(['Down.'], () => { enterArea('tomb', { depth: d }); save(); }, 500); }
 function clearFloor() { const a = RT.area; a.cleared = true; sfx('quest'); toast(a.boss ? 'The keeper is down. The seal breaks.' : 'Enough have fallen. The seal breaks.'); ringFx(a.exit.x, a.exit.z + 2, 0x8a6cff, 8, 1); if (a.boss && a.chests) { const c = a.chests[0]; c.rig.g.visible = true; } }
@@ -379,8 +389,10 @@ function fastTravel(p) { if (RT.combatT > 0) { sfx('deny'); return toast('Not wh
 function skipTo(h) { const from = absHours(); if (S.clock >= h) newDay(); S.clock = h; const mins = (absHours() - from) * 60; for (const k of ['vbloodT', 'hbloodT']) if (S.flags[k] > 0) S.flags[k] = Math.max(0.01, S.flags[k] - mins); }
 function sleepUntil(h) {
   if (pl.wolf) return toast('The wolf will not lie down indoors.');
+  /* a vampire with no working daylight ring is not left to wake with the sun up (sunUp: 06:30 to 19:30) */
+  if (isVamp() && !daylightSafe() && h >= 6.5 && h < 19.5) return say([['', 'The sun will be up when you wake, and you have nothing to keep it off you. Sleep until dusk instead?']], [['Sleep until dusk.', () => sleepUntil(20.5)], ['Stay awake.', () => { }]]);
   if (S.species === 'werewolf' && !hasUniq('moonring') && S.clock >= 6 && S.clock < 20 && fullTonight() && (h > 20 || h <= S.clock)) return toast('The moon is full tonight. You will not sleep through it. Chain yourself in the Lockwood cellar, or be somewhere there is nobody to hurt.');
-  const hrs = (h - S.clock + 24) % 24 || 24, go = () => blackout([h < 12 ? 'You sleep. Morning comes.' : 'You sleep through the day.'], () => { skipTo(h); pl.hp = P.maxHp; pl.sta = P.maxSta; if (S.origin !== 'siphoner') pl.foc = P.maxFoc; if (isVamp()) pl.blood = Math.max(0, pl.blood - 8); S.exposure = Math.max(0, S.exposure - 20); enterArea('world', HOME); save(); toast('Rested.'); }, 900);
+  const hrs = (h - S.clock + 24) % 24 || 24, go = () => blackout([h < 12 ? 'You sleep. Morning comes.' : 'You sleep through the day.'], () => { skipTo(h); pl.hp = P.maxHp; pl.sta = P.maxSta; if (S.origin !== 'siphoner') pl.foc = P.maxFoc; if (isVamp()) pl.blood = Math.max(0, pl.blood - 8); S.exposure = Math.max(0, S.exposure - 20); enterArea('world', S.area === 'world' ? { x: pl.x, z: pl.z } : HOME); save(); toast('Rested.'); }, 900);   // you wake where you lay down: the boarding house, or Gault's cellar
   if (S.transition && absHours() + hrs >= S.transition.until) return say([['', 'If you sleep now you will not wake. The day you were given runs out before then, and you have not fed.']], [['Sleep anyway.', go], ['Stay awake.', () => { }]]);
   if (S.venomUntil > absHours() && !S.original && absHours() + hrs >= S.venomUntil) return say([['', 'The venom will finish its work before you wake.']], [['Sleep anyway.', go], ['Stay awake.', () => { }]]);
   go();
@@ -404,7 +416,7 @@ function tickClock(dt) {
   if (vamp && pl.blood <= 0) { const was = Math.floor((pl.dryT || 0) / 60); if (!pl.dryT) { toast('You are out of blood. Nothing heals, and you will weaken until you feed.'); recalc(); } pl.dryT = (pl.dryT || 0) + dt; const st = Math.floor(pl.dryT / 60); if (st !== was && st < 3) { toast(st === 1 ? 'Your skin is going grey. Feed.' : 'You can barely lift your hands. Feed now, or you will desiccate.'); recalc(); } if (pl.dryT >= 180) return desiccate(); }
   else if (pl.dryT) { pl.dryT = 0; recalc(); }
   /* the switch eats at you while it is off; a Heretic's focus is siphoned from her own blood; sage smoke hides you; the Hundred take their price */
-  if (S.switchOff) { if (vamp) S.humanity = Math.max(0, S.humanity - dt / 60); else S.switchOff = false; }
+  if (S.switchOff) { if (vamp) { const h0 = Math.floor(S.humanity / 10); S.humanity = Math.max(0, S.humanity - dt / 60); if (Math.floor(S.humanity / 10) !== h0 && hasUniq('ripper')) recalc(); } else S.switchOff = false; }   // Ripper's Band counts humanity lost in tens
   if (S.heretic && vamp && pl.foc < P.maxFoc && pl.blood > P.maxBlood * 0.2) { const g = Math.min(P.maxFoc - pl.foc, 1.5 * dt); pl.foc += g; pl.blood -= g * 0.5; }
   if (F.sageT > now) S.exposure = Math.max(0, S.exposure - dt * 1.5);
   if (F.hundredT) { if (now >= F.hundredT || !inHollow()) { F.hundredT = 0; recalc(); toast('The Hundred let go of you.'); } else { pl.hp -= P.maxHp * 0.012 * dt; if (pl.hp < P.maxHp * 0.05) { pl.hp = P.maxHp * 0.05; F.hundredT = 0; recalc(); toast('They let go just before it kills you. That was all you can carry.'); } } }
@@ -420,25 +432,26 @@ function playerDeath(src, o) {   // src: the actor that did it, null for a linge
     setTimeout(() => { if (!pl.dead || !$('death').hidden) return; standUp(); pl.hp = P.maxHp * (0.3 + 0.1 * r); pl.inv = 2; sfx('turn'); ringFx(pl.x, pl.z, 0xff2030, 6, 0.7); RT.flashV = 0.2; floatText(pl.x, 2.8, pl.z, 'UNDYING', '#ff5060', 18); }, 4000); return; }
   pl.dead = true; pl.hp = 0; pl.act = null; pl.sw = null; pl.block = false; if (pl.feed) endFeed(true); S.stats.deaths++; sfx('die'); RT.shake = 0.8; RT.deathSrc = how;
   /* a Founder's Ring brings back an ordinary human killed by something that is not */
-  const ring = hasUniq('fring') && S.origin === 'human' && S.species === 'human' && !sk('h_five') && uncanny, lost = ring || how === 'line' ? 0 : Math.floor(S.gold * (how === 'venom' ? 0.25 : 0.1)); S.gold -= lost; if (ring) { S.flags.ringDeaths = (S.flags.ringDeaths || 0) + 1; codex('fring'); }
+  const ring = hasUniq('fring') && S.origin === 'human' && S.species === 'human' && !sk('h_five') && uncanny, lost = ring || how === 'line' ? 0 : Math.floor(S.gold * (how === 'venom' ? 0.25 : 0.1)); S.gold -= lost; RT.ringBack = ring ? 1 : 0; if (ring) { S.flags.ringDeaths = (S.flags.ringDeaths || 0) + 1; codex('fring'); }   // the price is paid on waking (respawn): hours of seeing things, more each time
   const txt = how === 'sun' ? 'The sun found you. What is left of you is carried home in a coat.' : how === 'venom' ? "The fever takes the last of you a day after the bite. You wake at home with a stranger's blood in your mouth and no memory of who paid for it." : how === 'line' ? 'Corvin is dead, and everything he ever made dies with him. You cough blood on the hour, like the rest of his line.'
     : vamp && S.original ? 'Nothing that was done to you tonight could kill you. You lie grey where you fell until someone carries you home.' : S.species === 'hybrid' ? 'Not your head and not your heart, so not the end. You wake at home with the bones setting.' : vamp ? (ash ? 'White oak ash, through your own hand. The dagger does that to any vampire who uses it. You wake at home hours later, grey to the elbow.' : wood ? 'Oak, a breath from the heart. You wake at home hours later with the splinters working their way out.' : 'Not the heart, not the head, not fire. You wake at home hours later the way your kind does, with the bones setting.')
     : S.species === 'werewolf' ? 'A wolf heals faster than it bleeds, just. Someone from the Falls pack leaves you on the boarding house steps.' : ring ? `The ring drags you back from wherever that was. It keeps a little of you each time. That makes ${S.flags.ringDeaths}.`
     : S.origin === 'witch' || S.origin === 'siphoner' ? 'Odette Thorne finds you before the dark does. You wake at the boarding house with her stitches in you and her opinion of you unchanged.' : 'Somebody drags you back to the boarding house. Mrs. Pruitt does not ask questions.';
-  const sub = how === 'line' ? (hasSnap('hollowmoon.preboss') ? 'There is no waking from this one. The story goes back to before it was done.' : '') : ring ? 'You lost nothing but 2% of your health, for good.' : lost ? `You lost ${lost} gold.` : '';
+  const sub = how === 'line' ? (hasSnap('hollowmoon.preboss') ? 'There is no waking from this one. The story goes back to before it was done.' : '') : ring ? 'You lost no gold. For some hours you will see people who are not there, and it is longer every time.' : lost ? `You lost ${lost} gold.` : '';
   setTimeout(() => { $('deathtxt').textContent = txt; $('deathsub').textContent = sub; $('death').hidden = false; RT.paused = true; }, 1400);
 }
 function respawn() {
   $('death').hidden = true; const kind = RT.deathSrc; RT.deathSrc = null;
   if (kind === 'line' && rewind('hollowmoon.preboss', 'Corvin is alive again, and so are you. Unlink the line, take the Cure, or find another way to stop him.')) return;
   if (kind === 'venom') S.venomUntil = 0; const dusk = isVamp() && !daylightSafe(); if (!dusk) skipTo(8); else if (!(S.clock >= 20.6 || S.clock < 5)) skipTo(20.6);
+  if (RT.ringBack) { RT.ringBack = 0; S.flags.ringHaunt = absHours() + Math.min(12, 2 * (S.flags.ringDeaths || 1)); }   // a Founder's Ring keeps a little of the mind: phantoms for two hours per death so far, twelve at most (30-actors haunting)
   standUp(); shiftForm(false); recalc(); pl.hp = P.maxHp; pl.sta = P.maxSta; if (isVamp()) pl.blood = Math.max(pl.blood, 30); S.exposure = Math.max(0, S.exposure - 25); enterArea('world', HOME); RT.paused = false; save();
 }
 
 /* ---------------- saving: this browser, plus the artifact's per-person cloud store when there is one ---------------- */
-let cloud = null, cloudT = 0;
+let cloud = null, cloudT = 0, saveOff = false;   // saveOff: nothing may be written until the page reloads (a save code was loaded, or the character erased: 50-ui sets it too)
 function snapshot() { if (pl) { S.hp = pl.hp; S.foc = pl.foc; S.blood = pl.blood; if (S.area === 'world') S.pos = { x: pl.x, z: pl.z }; } S.ts = Date.now(); S.uid = UID; return JSON.stringify(S); }
-function save(forceCloud) { if (!S || !pl || pl.dead) return; const j = snapshot(); try { localStorage.setItem('hollowmoon.save', j); } catch (e) { } if (cloud && (forceCloud || Date.now() - cloudT > 45000)) { cloudT = Date.now(); cloud.set({ json: j, ts: S.ts }).catch(() => { }); } }
+function save(forceCloud) { if (saveOff || !S || !pl || pl.dead) return; const j = snapshot(); try { localStorage.setItem('hollowmoon.save', j); } catch (e) { } if (cloud && (forceCloud || Date.now() - cloudT > 45000)) { cloudT = Date.now(); cloud.set({ json: j, ts: S.ts }).catch(() => { }); } }
 function readLocal() { try { const j = localStorage.getItem('hollowmoon.save'); return j ? JSON.parse(j) : null; } catch (e) { return null; } }
 /* v2 -> v3: the old game had no bloodlines. It did have silver weapons, a compass, a moonstone pendant and witches who bought their magic back; none of those survive. */
 function migrate2() {
@@ -459,4 +472,10 @@ function applySave(o) {
 }
 async function initCloud(onNewer) { try { if (!window.claude || !window.claude.use) return; const db = await window.claude.use('db'), user = await window.claude.use('user'); if (!db || !user) return; const id = await user.id(); if (!id) return; cloud = db.doc('data/users/' + id + '/save'); const snap = await cloud.get(); if (snap && snap.exists) { const d = snap.data(); if (d && d.json) onNewer(JSON.parse(d.json)); } } catch (e) { cloud = null; } }
 function exportSave() { return btoa(unescape(encodeURIComponent(snapshot()))); }
-function importSave(txt) { try { const o = JSON.parse(decodeURIComponent(escape(atob(txt.trim())))); if (o.v !== 2 && o.v !== 3) throw 0; localStorage.setItem('hollowmoon.save', JSON.stringify(o)); return true; } catch (e) { return false; } }
+/* a save code replaces this browser's save. It is stamped now, so an older cloud copy cannot win on the next load; the last character's snapshots go; and nothing saves again until the reload.
+   Returns false for a bad code. Otherwise true, or with a cloud store a promise of true that settles once the cloud copy is written (three seconds at most): reload after it. */
+function importSave(txt) {
+  let o, j; try { o = JSON.parse(decodeURIComponent(escape(atob(txt.trim())))); if (!o || (o.v !== 2 && o.v !== 3)) throw 0; o.ts = Date.now(); j = JSON.stringify(o); localStorage.setItem('hollowmoon.save', j); } catch (e) { return false; }
+  saveOff = true; dropSnap('hollowmoon.preturn'); dropSnap('hollowmoon.preboss'); if (!cloud) return true;
+  try { cloudT = Date.now(); return Promise.race([cloud.set({ json: j, ts: o.ts }).then(() => true, () => true), new Promise(r => setTimeout(r, 3000, true))]); } catch (e) { return true; }
+}
