@@ -116,7 +116,8 @@ const itemValue = it => Math.round((6 + it.lvl * 3.2) * Math.pow(1.75, Math.min(
 function itemLines(it) { const b = BASES[it.base], l = []; if (it.dmg) l.push(`${Math.round(up(it, it.dmg))} damage` + (b.slot === 'weapon' ? ` · ${b.cls === 'fast' ? 'fast' : b.cls === 'med' ? 'balanced' : b.cls === 'slow' ? 'heavy' : 'a witch casts with it, anyone else swings it'} · ${it.uniq === 'whiteoak' ? 'white oak' : b.mat}` : ` · ${b.mat} · ${b.cd}s reload`));
   if (it.def) l.push(`${Math.round(up(it, it.def))} armour`); if (it.hp) l.push(`+${Math.round(up(it, it.hp))} health`); if (it.st) l.push(`+${Math.round(up(it, it.st))} stamina`); if (it.fo) l.push(`+${Math.round(up(it, it.fo))} focus`);
   for (const [k, v] of it.aff) if (v) l.push(AFFD[k].replace('{v}', v)); if (it.uniq) l.push(UNIQ[it.uniq].d); if (it.despelled) l.push('The spell has been taken out of it. It is only a stone until the witch who made it relents.'); return l; }
-function addItem(it, quiet, force) { if (S.inv.length >= 60 && !force) { toast('Your pack is full.'); return false; }   // force: a quest reward, which is never lost to a full pack (it goes in over the limit) S.inv.push(it); if (!quiet) lootToast(it.name + (it.up ? ' +' + it.up : ''), RAR[it.rar].c); sfx(it.rar >= 3 ? 'rare' : 'loot'); return true; }
+/* force: a quest reward, which is never lost to a full pack (it goes in over the limit) */
+function addItem(it, quiet, force) { if (S.inv.length >= 60 && !force) { toast('Your pack is full.'); return false; } S.inv.push(it); if (!quiet) lootToast(it.name + (it.up ? ' +' + it.up : ''), RAR[it.rar].c); sfx(it.rar >= 3 ? 'rare' : 'loot'); return true; }
 function addCons(k, n = 1, quiet) { k = CONS[k] ? k : OLDID[k]; if (!CONS[k]) { console.warn('unknown supply', k); return; } S.cons[k] = (S.cons[k] || 0) + n; if (!quiet) lootToast(CONS[k].n + (n > 1 ? ' ×' + n : ''), '#d8d0c0'); }
 function equip(it) {
   const i = S.inv.indexOf(it); if (i < 0) return; if (pl.wolf) { toast('Not with paws.'); sfx('deny'); return; } if (it.lvl > S.lvl + 3) { toast(`You need to be level ${it.lvl - 3} to use that.`); sfx('deny'); return; }
@@ -294,11 +295,12 @@ function desiccate() {
   if (RT.blk || !pl || pl.dead) return; sfx('die');
   blackout(['The hunger stops hurting. That is the bad sign.', 'Your hands have gone grey. They will not close.', 'Someone lifts you. It is a day before you can open your eyes.'], () => { const t0 = absHours(); skipTo(20.6); if (absHours() - t0 < 12) newDay(); standUp(); shiftForm(false); enterArea('world', { x: 236, z: -47 }); recalc(); pl.blood = 35; pl.hp = P.maxHp * 0.5; S.exposure = Math.max(0, S.exposure - 20); codex('desiccation'); save(); toast(S.flags.ambroseDead ? 'Gault found you on the manor road. He fed you from a bag, a spoonful at a time. Do not let it get that far again.' : 'Ambrose found you. Gault fed you from a bag, a spoonful at a time. Do not let it get that far again.'); });
 }
-/* the Lockwood cellar: a triggered werewolf who chains up before moonrise spends the night there and hurts nobody */
+/* the Lockwood cellar: a triggered werewolf who chains up before moonrise spends the night there and hurts nobody.
+   From 06:00 the moon in question is tonight's (fullTonight), so chaining between 06:00 and 06:36 must still wake the next morning: the clock is nudged to 06:36 first and skipTo rolls the day. */
 function chainUp() {
   if (S.species !== 'werewolf') return toast(isHybrid() ? 'You choose when you change. The chains are for those who cannot.' : 'Old chains, bolted into the stone. They are not for you.');
   if (pl.wolf) return toast('Too late for chains. You have no hands.'); if (!fullTonight()) return toast('The moon is not full tonight. You do not need these.'); if (hasUniq('moonring')) return toast('The ring keeps the moon off you. You do not need these.');
-  blackout(['You lock the chains and throw the key where hands can reach it and paws cannot.', 'Every bone. Then nothing you will remember.', 'Morning. The door is scored from the inside. Nobody is dead.'], () => { S.flags.chained = S.day; if (S.clock >= 6 && S.clock < 6.6) S.clock = 6.6; skipTo(6.6); shiftForm(false); S.flags.chained = S.day;   // from 06:00 the moon in question is tonight's: it is always the next morning you wake to S.flags.moons = (S.flags.moons || 0) + 1; standUp(); recalc(); pl.hp = P.maxHp * 0.7; pl.sta = P.maxSta; qEvent('chained'); save(); }, 900);
+  blackout(['You lock the chains and throw the key where hands can reach it and paws cannot.', 'Every bone. Then nothing you will remember.', 'Morning. The door is scored from the inside. Nobody is dead.'], () => { S.flags.chained = S.day; if (S.clock >= 6 && S.clock < 6.6) S.clock = 6.6; skipTo(6.6); shiftForm(false); S.flags.chained = S.day; S.flags.moons = (S.flags.moons || 0) + 1; standUp(); recalc(); pl.hp = P.maxHp * 0.7; pl.sta = P.maxSta; qEvent('chained'); save(); }, 900);
 }
 /* a living witch at the Hollow altar may borrow the Hundred: double spell power for 40 seconds, paid for in blood from the nose */
 function channelHundred() {
@@ -350,7 +352,7 @@ function genBounties() {
     S.bounties.push({ id, k, type, zone: z.id, zn: z.n, n, prog: 0, acc: false, done: false, lvl: lv, gold: Math.round((24 + L * 11) * mult), xp: Math.round(xpNeed(L) * 0.14 * mult),
       text: k === 'kill' ? `Put down ${n} ${plural(type)}. They have been seen around ${z.n}${dark ? ' after dark. Wood through the heart, or fire, or they get back up' : ''}.` : k === 'elite' ? `Something worse than usual is loose at ${z.n}${dark ? ', after dark' : ''}. End it.` : `The Council wants eyes on floor ${n} of the Tomb. Clear it.`, title: k === 'kill' ? `Cull: ${plural(type)}` : k === 'elite' ? `Hunt at ${z.n}` : `Survey: floor ${n}` }); }
 }
-function acceptBounty(b) { b.acc = true; sfx('quest'); if (b.k === 'elite') b.spawn = true; toast('Bounty accepted: ' + b.title); }
+function acceptBounty(b) { b.acc = true; sfx('quest'); toast('Bounty accepted: ' + b.title); }   /* a hunt's quarry is put out by worldEvents (45-story) whenever the notice is taken, unfinished, and nothing alive carries its tag */
 function dropBounty(b) { if (!b || !b.acc || b.done) return false; S.bounties = S.bounties.filter(x => x !== b); sfx('ui'); toast('You take the notice down: ' + b.title + '.'); return true; }   // give up a notice you took and have not finished; nothing replaces it until morning
 function payBounty(b) { b.paid = true; S.gold += b.gold; gainXp(b.xp); sfx('coin'); if (b.k !== 'kill') dropLoot(pl.x, pl.z, S.lvl, { n: 1, bias: 1 }); S.bounties = S.bounties.filter(x => x !== b); toast(`Bounty paid: ${b.gold} gold.`); S.flags.bounties = (S.flags.bounties || 0) + 1; }
 
