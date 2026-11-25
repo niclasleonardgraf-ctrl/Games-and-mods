@@ -40,7 +40,7 @@ function updChunks() { const a = RT.area, R0 = 118; for (const g of a.chunks.val
 function building(name, x, z, r, w, d, glow = 0xff9a40) {
   const o = place(name, x, z, r, 1, BA.group); o.traverse(m => { if (m.isMesh) m.material = m.material.clone(); });
   if (Math.abs(Math.sin(r)) > 0.5) { const t = w; w = d; d = t; }
-  addBox([x - w / 2, z - d / 2, x + w / 2, z + d / 2], true); BA.fade.push({ o, x, z, w, d, a: 1 });
+  addBox([x - w / 2, z - d / 2, x + w / 2, z + d / 2], true); BA.fade.push({ o, x, z, w, d, a: 1, name, home: /^house|^boarding|^manor|^cabin/.test(name) });
   if (glow) BA.glows.push([x + Math.sin(r) * (d / 2 + 2.2), z + Math.cos(r) * (d / 2 + 2.2), 9, glow]); return o;
 }
 function fenceLine(x1, z1, x2, z2, out) { const l = hyp(x2 - x1, z2 - z1), n = Math.max(1, Math.round(l / 4)), r = Math.abs(x2 - x1) > Math.abs(z2 - z1) ? 0 : PI / 2;
@@ -157,7 +157,7 @@ function buildWorld() {
   const herbZone = (kind, n, x1, z1, x2, z2) => { for (let i = 0, t = 0; i < n && t < 400; t++) { const x = rr(x1, x2), z = rr(z1, z2); if (!freeSpot(x, z, 1)) continue; i++; const id = 'h' + (hid++); herbs[kind].push([x, z, rr(0, 6), 1.2, 0, id]); } };
   herbZone('vervain', 16, -280, -280, 190, -70); herbZone('vervain', 5, -100, 86, 180, 280); herbZone('wolfsbane', 10, 100, -280, 190, -120); herbZone('wolfsbane', 8, -280, 100, -90, 280); herbZone('sage', 12, -90, 120, 180, 280); herbZone('sage', 8, 70, -60, 190, 130);
   for (const kind in herbs) for (const h of herbs[kind]) { const m = place(kind, h[0], h[1], h[2], 1.25, G), id = h[5]; a.glows.push([h[0], h[1], 2.6, kind === 'vervain' ? 0x9a5cff : kind === 'wolfsbane' ? 0xffe060 : 0xd0ffe0]);
-    const it = addInter({ id, x: h[0], z: h[1], r: 2.2, m, label: () => m.visible ? 'Gather ' + CONS[kind].n : null, act: () => { m.visible = false; S.gath[id] = S.day; const n = 1 + (sk('w_herb') > 0 ? 1 : 0) + (chance(0.3) ? 1 : 0); addCons(kind, n); sfx('loot'); puff(h[0], 0.6, h[1], 8, { c: GREEN, add: 0.7, sp: 1.5, up: 2, life: 0.6, size: 0.2, grav: 2 }); qEvent('gather', kind, n); } }); a.herbs = a.herbs || []; a.herbs.push(it); }
+    const it = addInter({ id, x: h[0], z: h[1], r: 2.2, m, label: () => m.visible ? 'Gather ' + CONS[kind].n : null, act: () => { m.visible = false; S.gath[id] = S.day; const n = 1 + (sk('w_herb') > 0 ? 1 : 0) + (chance(0.3) ? 1 : 0); addCons(kind, n); sfx('loot'); herbBurn(kind, n); puff(h[0], 0.6, h[1], 8, { c: GREEN, add: 0.7, sp: 1.5, up: 2, life: 0.6, size: 0.2, grav: 2 }); qEvent('gather', kind, n); } }); a.herbs = a.herbs || []; a.herbs.push(it); }
   // ---- wilderness ----
   const tr = { pine: [], pineTall: [], oak: [], birch: [], willow: [] }, bushes = [], rocks = [], boulders = [], stumps = [], logs = [], shrooms = [], grass = [], reeds = [];
   for (let i = 0; i < 3400; i++) { const x = rr(-WS + 6, WS - 6), z = rr(-WS + 6, WS - 6), north = z < -64 && x < 196, east = x > 212; if (!freeSpot(x, z)) continue; if (!north && !east && rnd() < 0.62) continue;
@@ -174,6 +174,12 @@ function buildWorld() {
   const fp = new Float32Array(700 * 3); for (let i = 0; i < 700; i++) { fp[i * 3] = rr(-WS, WS); fp[i * 3 + 1] = rr(0.5, 3.2); fp[i * 3 + 2] = rr(-WS, WS); }
   const fgeo = new T.BufferGeometry(); fgeo.setAttribute('position', new T.BufferAttribute(fp, 3)); a.flies = new T.Points(fgeo, new T.PointsMaterial({ color: 0xd8ff9a, size: 0.24, transparent: true, opacity: 0.9, blending: T.AdditiveBlending, depthWrite: false })); G.add(a.flies);
   buildGlows(a); hashArea(a); BA = null; return a;
+}
+/* vervain burns a vampire's skin and wolfsbane a werewolf's, even to pick; a hybrid is hurt by both */
+function herbBurn(kind, n) {
+  const v = kind === 'vervain' && isVamp(), w = kind === 'wolfsbane' && isWolf(); if (!v && !w) return;
+  pl.hp = Math.max(1, pl.hp - P.maxHp * 0.05 * n); pl.fx[v ? 'verv' : 'wolfsbane'] = Math.max(pl.fx[v ? 'verv' : 'wolfsbane'] || 0, 4); pl.flash = 0.1; RT.hurtV = Math.max(RT.hurtV, 0.4); sfx('hurt'); puff(pl.x, 1.1, pl.z, 6, { c: v ? VERV : SPARK, add: 1, sp: 1.5, up: 1.5, life: 0.5, size: 0.16, grav: 0 });
+  toast(v ? 'The vervain blisters your fingers to the bone. You pick it anyway.' : 'The wolfsbane raises welts wherever it touches you.');
 }
 function mkChest(x, z, id, lvl, big) {
   const rig = mkRig('chest', {}, big ? 1.4 : 1.15); rig.g.position.set(x, 0, z); rig.g.rotation.y = (x * 13 + z * 7) % 6; shadowed(rig.g); BA.group.add(rig.g); addCirc(x, z, 0.7); BA.glows.push([x, z, 4, big ? 0xffc040 : 0xb0a060]);
@@ -194,8 +200,15 @@ function stoneTex() { const c = document.createElement('canvas'); c.width = c.he
   for (let i = 0; i < 5000; i++) { g.fillStyle = `rgba(0,0,0,${Math.random() * 0.22})`; g.fillRect(Math.random() * 512, Math.random() * 512, 2 + Math.random() * 3, 2); } g.strokeStyle = 'rgba(10,10,14,.6)'; g.lineWidth = 2; for (let i = 0; i < 12; i++) { let x = Math.random() * 512, y = Math.random() * 512; g.beginPath(); g.moveTo(x, y); for (let k = 0; k < 5; k++) { x += (Math.random() - 0.5) * 50; y += (Math.random() - 0.5) * 50; g.lineTo(x, y); } g.stroke(); } const t = new T.CanvasTexture(c); t.wrapS = t.wrapT = T.RepeatWrapping; t.encoding = T.sRGBEncoding; return t; }
 let stoneT = null;
 const TOMBMODS = [{ n: 'Swarm', d: 'half again as many, each a little weaker.', count: 1.6, hp: 0.7 }, { n: 'Champions', d: 'many of the dead here kept their names.', elite: 0.3 }, { n: 'Vault', d: 'more chests, and stronger guards.', chest: 0.4, lvl: 2 }, { n: 'Blood Moon', d: 'they hit harder. They are worth more.', dmg: 1.25, xp: 1.6 }, { n: 'Ossuary', d: 'tougher dead, by a third.', hp: 1.35, xp: 1.3 }];
-const tombBoss = d => ['warden', 'corvin', 'matriarch', 'alpha', 'lenore', 'ambrose'][(d / 5 - 1) % 6];
-function tombTable(d) { return d < 5 ? ['feral', 'feral', 'shade', 'cultist', 'thrall'] : d < 10 ? ['stalker', 'cultist', 'shade', 'warlock', 'feral'] : d < 15 ? ['stalker', 'elder', 'warlock', 'shade', 'cultist'] : ['elder', 'warlock', 'werewolf', 'stalker', 'shade', 'elder']; }
+/* Floors 1 to 4 are the tomb of 1864: the vampires a Thorne witch sealed under Fell's Church, starved grey and still waiting. The older prison lies below.
+   Its keepers: the Warden on 5, Corvin on 10, the Sleeper and the Cure on 20. A keeper who has truly died does not come back; another takes the floor.
+   Nothing in wolf form is ever down here. There is no moon underground. */
+const TOMBKEEP = { 5: 'warden', 10: 'corvin', 20: 'sleeper' }, TOMBROTA = ['matriarch', 'warden', 'lenore'];
+function tombBoss(d) { const sl = S.flags.slain || {}, ok = t => t && EN[t] && !sl[t]; let t = ok(TOMBKEEP[d]) ? TOMBKEEP[d] : null; for (let i = 0; i < TOMBROTA.length && !t; i++) { const c = TOMBROTA[(d / 5 + i) % TOMBROTA.length]; if (ok(c)) t = c; } return t || 'elder'; }
+function tombTable(d) {
+  const t = d < 5 ? ['tombvamp'] : d < 10 ? ['stalker', 'cultist', 'thrall', 'warlock', 'shade'] : d < 15 ? ['stalker', 'elder', 'warlock', 'shade', 'cultist'] : ['elder', 'warlock', 'hybrid', 'stalker', 'shade', 'elder'];
+  const ok = t.filter(k => EN[k] && !EN[k].boss && !EN[k].full && !(EN[k].fam === 'wolf' && EN[k].rig !== 'human') && needOk(EN[k], true) && !lineDead(EN[k])); return ok.length ? ok : [EN.feral ? 'feral' : Object.keys(EN)[0]];
+}
 function genTomb(depth) {
   const a = BA = mkArea('tomb'), rnd = mkRng((S.seed * 7919 + depth * 104729 + S.runs * 31) | 0), rr = (x, y) => x + rnd() * (y - x), ri = (x, y) => Math.floor(rr(x, y + 1)), N = 44, grid = new Uint8Array(N * N), boss = depth % 5 === 0;
   a.depth = depth; a.lvl = 2 + Math.floor(depth * 1.7); a.boss = boss; a.spawns = []; a.cleared = false; const G = a.group, rooms = [];
@@ -225,16 +238,24 @@ function genTomb(depth) {
   addInter({ x: sx, z: sz + 1.8, r: 3, label: () => a.cleared ? 'Descend to floor ' + (depth + 1) : (boss ? 'Sealed until its keeper falls' : `Sealed: ${Math.max(0, a.need - a.killed)} more must fall`), act: () => { if (a.cleared) descend(); else { sfx('deny'); toast('The seal feeds on the dead. It is not satisfied yet.'); } } });
   // enemies and chests
   const table = tombTable(depth);
-  if (boss) { const p = rc(rooms[1]); a.spawns.push({ x: p.x, z: p.z - 4, type: tombBoss(depth), boss: 1 }); a.need = 1; mkChest(p.x, p.z - 21, 'bc', a.lvl, true); a.chests[0].locked = true; a.chests[0].rig.g.visible = false; }
+  if (boss) { const p = rc(rooms[1]), kt = tombBoss(depth); a.keeper = kt; a.spawns.push({ x: p.x, z: p.z - 4, type: kt, boss: 1, elite: !EN[kt].boss }); a.need = 1; mkChest(p.x, p.z - 21, 'bc', a.lvl, true); a.chests[0].locked = true; a.chests[0].rig.g.visible = false;
+    if (kt === 'sleeper') {   // the Sleeper's door: sealed by a witch two thousand years ago, and it opens for a witch of the Thorne line or for Odette's talisman
+      const dz = W(23), box = [W(16) - TC / 2, dz - TC / 2, W(18) + TC / 2, dz + TC / 2], slabs = [16, 17, 18].map(c => place('tombwall', W(c), dz, 0, 1, G)); addBox(box, true); a.glows.push([W(17), dz + 3.2, 9, 0x6a4cff]); lamp(W(17), dz + 3.4, 0x7a5cff, 1.5, 15, 2.6);
+      const door = addInter({ x: W(17), z: dz + 3, r: 6, open: false, label: () => door.open ? null : 'A sealed door, far older than the church', act: () => { let can = false; try { can = !!canOpenSleeper(); } catch (er) { can = false; }
+        if (!can) { sfx('deny'); return toast('The stone does not move. A witch sealed this door, and it wants a witch of the Thorne line, or her talisman.'); }
+        door.open = true; for (const m of slabs) G.remove(m); for (const l of [a.boxes, a.los]) { const i = l.indexOf(box); if (i >= 0) l.splice(i, 1); } hashArea(a); sfx('open'); sfx('boom'); RT.shake = Math.max(RT.shake, 0.5); ringFx(W(17), dz, 0x8a6cff, 9, 1); puff(W(17), 1.5, dz, 40, { c: ASH, add: 0.1, sp: 3, up: 2, life: 1.2, size: 0.4, grav: 2, spread: 4 }); toast('The seal knows what you carry. Stone grinds on stone, and the air that comes out is two thousand years old.'); } }); a.door = door; } }
   else { let font = depth >= 2 && rnd() < 0.55; rooms.forEach((r, i) => { if (i === 0) return; const n = Math.round(Math.min(7, 1 + Math.floor(r.w * r.h / 11) + Math.floor(depth / 6)) * (mod && mod.count || 1)); for (let k = 0; k < n; k++) { const p = rp(r, 2.5); a.spawns.push({ x: p.x, z: p.z, type: table[Math.floor(rnd() * table.length)], elite: rnd() < Math.min(0.45, 0.04 + depth * 0.012) + (mod && mod.elite || 0) }); }
       if (i > 0 && i < rooms.length - 1 && rnd() < 0.42 + (mod && mod.chest || 0)) { const p = rp(r, 2.2); mkChest(p.x, p.z, 'tc' + i, a.lvl, rnd() < 0.15 + (mod && mod.chest ? 0.2 : 0)); }
-      if (font && i >= 2 && i < rooms.length - 1) { font = false; const p = rc(r); place('fountain', p.x, p.z, 0, 0.7, G); addCirc(p.x, p.z, 1.7); a.glows.push([p.x, p.z, 9, 0xb01020]); lamp(p.x, p.z, 0xff2030, 1.2, 14, 1.5); const f = addInter({ x: p.x, z: p.z, r: 3.2, used: false, label: () => f.used ? null : 'Drink from the blood font', act: () => { f.used = true; heal(P.maxHp); pl.foc = P.maxFoc; if (S.species === 'vampire') pl.blood = P.maxBlood; sfx('heal'); ringFx(p.x, p.z, 0xff2030, 5, 0.7); toast(S.species === 'vampire' ? 'Old blood, still warm. You are whole.' : 'It is only water, here. Somehow. You are whole.'); } }); } }); a.need = Math.ceil(a.spawns.length * 0.7); }
+      if (font && i >= 2 && i < rooms.length - 1) { font = false; const p = rc(r); place('fountain', p.x, p.z, 0, 0.7, G); addCirc(p.x, p.z, 1.7); a.glows.push([p.x, p.z, 9, 0xb01020]); lamp(p.x, p.z, 0xff2030, 1.2, 14, 1.5); const f = addInter({ x: p.x, z: p.z, r: 3.2, used: false, label: () => f.used ? null : 'Drink from the blood font', act: () => { f.used = true; heal(P.maxHp); if (S.origin !== 'siphoner') pl.foc = P.maxFoc; if (isVamp()) pl.blood = P.maxBlood; sfx('heal'); ringFx(p.x, p.z, 0xff2030, 5, 0.7); toast(isVamp() ? 'Old blood, kept warm by something. You are whole.' : 'It is only water, here. Somehow. You are whole.'); } }); } }); a.need = Math.ceil(a.spawns.length * 0.7); }
   a.killed = 0; a.fog = [0x05060a, 0x050a08, 0x0a0606, 0x08050a][Math.floor((depth - 1) / 5) % 4]; buildGlows(a); hashArea(a); BA = null; return a;
 }
 function disposeArea(a) { a.group.traverse(o => { if (o.isInstancedMesh) o.dispose(); }); scene.remove(a.group); }
 
 /* ---------------- time, sky, weather ---------------- */
-const isNight = () => S.clock >= 20 || S.clock < 6, sunUp = () => S.clock >= 6.5 && S.clock < 19.5, moonPhase = () => (S.day + 2) % 8, fullMoon = () => moonPhase() === 4;
+const moonDay = () => S.clock < 6 ? S.day - 1 : S.day;   // a night keeps the moon it rose with: past midnight, until dawn
+const isNight = () => S.clock >= 20 || S.clock < 6, sunUp = () => S.clock >= 6.5 && S.clock < 19.5, moonPhase = () => (moonDay() + 2) % 8, fullMoon = () => moonPhase() === 4;
+/* out of the sun: close under the eaves of any building. Being let across a threshold is another matter (the invitation rule lives with the people who own the doors). */
+function shelterAt(x, z) { const a = RT.area; if (!a || a.id !== 'world') return null; for (const b of a.fade) if (Math.abs(x - b.x) < b.w / 2 + 2.2 && Math.abs(z - b.z) < b.d / 2 + 2.2) return b; return null; }
 const fmtClock = c => { const h24 = Math.floor(c) % 24, m = Math.floor((c % 1) * 60), h = h24 % 12 || 12; return h + ':' + String(m).padStart(2, '0') + (h24 >= 12 ? ' PM' : ' AM'); };
 const SKY = [ // [hour, fog, hemiSky, hemiGround, sun, hemiI, sunI]
   [0, 0x0a1120, 0x6a88cc, 0x1a2130, 0xa6bdf2, 0.72, 1.0], [5, 0x0a1120, 0x6a88cc, 0x1a2130, 0xa6bdf2, 0.72, 1.0], [6.3, 0x6b4a52, 0xe09a8a, 0x3a2a30, 0xff9a5a, 0.85, 1.25], [8, 0x9fb6c9, 0xcfe0ff, 0x5a5a48, 0xfff0d8, 0.95, 1.45],
@@ -253,7 +274,11 @@ function updSky(dt) {
       if (w === 'storm') { boltT -= dt; if (boltT <= 0) { boltT = R(6, 18); RT.flashV = 0.5; setTimeout(() => sfx('thunder'), R(200, 1200)); } } }
     weatherT -= dt; if (weatherT <= 0) { weatherT = R(150, 420); const r = Math.random(); S.weather = r < 0.55 ? 'clear' : r < 0.75 ? 'fog' : r < 0.93 ? 'rain' : 'storm'; } }
   // moods
-  const off = pl && pl.buff.ripper > 0; u.sat.value = lerp(u.sat.value, off ? 0.35 : 1.08, 0.08); u.tint.value.lerp(cA.setRGB(off ? 1.1 : 1, off ? 0.92 : 1, off ? 0.92 : 1), 0.08);
+  if (pl) RT.indoors = a.id === 'world' && !!shelterAt(pl.x, pl.z);
+  const off = pl && !!S.switchOff && S.species !== 'human', wolf = pl && pl.wolf, charm = pl && pl.fx.charm > 0, sick = pl && RT.sick > 0, glare = pl && RT.glare > 0, pulse = 0.5 + Math.sin(RT.time * 2.3) * 0.5;
+  u.sat.value = lerp(u.sat.value, off ? 0.35 : charm ? 0.55 : wolf ? 0.82 : sick ? 0.8 + pulse * 0.5 : 1.08, 0.08);
+  u.tint.value.lerp(off ? cA.setRGB(1.1, 0.92, 0.92) : charm ? cA.setRGB(1.02, 0.9, 1.16) : glare ? cA.setRGB(1.3, 1.24, 1.08) : sick ? cA.setRGB(0.92 + pulse * 0.1, 1.06, 0.84) : wolf ? cA.setRGB(1.06, 1, 0.9) : cA.setRGB(1, 1, 1), 0.08);
+  if (glare) { u.bloom.value = 1.5; RT.flashV = Math.max(RT.flashV, 0.05 + pulse * 0.04); }   // in transition the daylight only hurts the eyes
   RT.hurtV = Math.max(0, RT.hurtV - dt * 1.6); RT.flashV = Math.max(0, RT.flashV - dt * 2.2); u.hurt.value = Math.max(RT.hurtV, pl && pl.hp < P.maxHp * 0.25 && !pl.dead ? 0.35 + Math.sin(RT.time * 5) * 0.12 : 0, pl && pl.burning ? 0.5 : 0); u.flash.value = RT.flashV;
   for (const f of a.anim) f(dt);
 }

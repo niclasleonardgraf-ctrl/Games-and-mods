@@ -21,25 +21,30 @@ body{background:var(--ink);color:var(--bone);font-family:var(--ui);font-size:16p
 button{font:inherit;color:inherit;letter-spacing:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
 button:focus-visible{outline:2px solid var(--candle);outline-offset:2px}
 .hud{position:fixed;pointer-events:none;text-shadow:0 1px 3px #000;font-weight:600;letter-spacing:.06em}
-#vitals{top:var(--gt);left:var(--gl);display:grid;grid-template-columns:auto 1fr;gap:4px 10px;width:min(52vw,270px);align-items:center}
-#lvl{grid-row:span 3;width:46px;height:46px;border:2px solid var(--candle);border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-size:22px;font-weight:400;background:rgba(8,11,18,.6);color:var(--candle)}
+#left{top:var(--gt);left:var(--gl);display:grid;gap:10px;width:min(58vw,300px)}
+#vitals{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;width:min(52vw,270px);align-items:center}
+#bars{display:grid;gap:3px;min-width:0}
+#lvl{align-self:start;width:46px;height:46px;border:2px solid var(--candle);border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-size:22px;font-weight:400;background:rgba(8,11,18,.6);color:var(--candle)}
 .bar{position:relative;height:13px;background:rgba(8,11,18,.62);border:1px solid var(--line);overflow:hidden}
 .bar u{position:absolute;inset:0 auto 0 0;width:50%;background:linear-gradient(90deg,#7a0d1c,var(--blood-hi));transition:width .12s}
 .bar span{position:absolute;inset:0;font-size:10px;line-height:11px;text-align:center;letter-spacing:.1em;text-transform:uppercase}
 #bSt{height:6px}#bSt u{background:linear-gradient(90deg,#8a7a3a,#e6d27a)}
 .bar.focus u{background:linear-gradient(90deg,#2c3f8a,var(--lapis))}.bar.blood u{background:linear-gradient(90deg,#4a0510,#a8122a)}
-#bRes2 u{background:linear-gradient(90deg,#4a0510,#a8122a)}
+.bar.rage u{background:linear-gradient(90deg,#7a3a0c,#f0902c)}
+.bar.sm{height:11px}.bar.sm span{font-size:9px;line-height:9px}
+#trans{grid-column:1/-1;font-size:12px;line-height:1.25;letter-spacing:.08em;text-transform:uppercase;color:var(--bone);background:rgba(122,13,28,.6);border-left:2px solid var(--blood-hi);padding:3px 7px}
 #xp{grid-column:1/-1;height:3px;background:rgba(233,224,207,.15)}#xpfill{display:block;height:100%;background:var(--candle);width:0}
-#status{grid-column:1/-1;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--candle);min-height:13px}
+#status{grid-column:1/-1;font-size:11px;line-height:1.25;letter-spacing:.1em;text-transform:uppercase;color:var(--candle);min-height:13px}
 #gold{grid-column:1/-1;font-size:12px;color:var(--ash);letter-spacing:.08em;text-transform:uppercase}
 #pts{grid-column:1/-1;font-size:12px;color:#ffe040;letter-spacing:.08em;text-transform:uppercase}
-#quests{top:calc(var(--gt) + 138px);left:var(--gl);width:min(58vw,300px);display:grid;gap:8px}
+#quests{display:grid;gap:8px}
 .q b{display:block;font-family:var(--display);font-style:italic;font-weight:400;font-size:16px;color:var(--candle);letter-spacing:0}
 .q span{display:block;font-size:13px;letter-spacing:.02em;font-weight:500;line-height:1.25;color:var(--bone)}
 #tr{top:var(--gt);right:var(--gr);display:grid;gap:3px;justify-items:end;text-align:right}
 #mini{width:132px;height:132px;border:1px solid var(--line);border-radius:50%;background:#0a0e16}
 #clock{font-family:var(--display);font-size:22px;font-weight:400;letter-spacing:.02em;line-height:1}
-#daymoon,#zone{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ash)}#zone{color:var(--candle)}
+#clockrow{display:flex;gap:7px;align-items:center}#moonc{width:16px;height:16px;display:block}
+#daymoon,#zone,#moonline{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ash)}#zone{color:var(--candle)}#moonline.full{color:#ffe040}
 #tMenu{pointer-events:auto;background:rgba(8,11,18,.62);border:1px solid var(--line);padding:5px 10px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin-top:3px}
 #bossbar{top:calc(var(--gt) + 4px);left:50%;transform:translateX(-50%);width:min(46vw,520px);text-align:center}
 #bossname{font-family:var(--display);font-size:22px;font-weight:400;letter-spacing:.02em;color:var(--bone)}
@@ -49,7 +54,8 @@ button:focus-visible{outline:2px solid var(--candle);outline-offset:2px}
 .slot{position:relative;width:50px;height:50px;background:rgba(8,11,18,.66);border:1px solid var(--line);display:grid;place-items:center;overflow:hidden}
 .slot b{font-size:24px;font-weight:400;line-height:1;color:var(--bone)}.slot i{position:absolute;right:3px;bottom:1px;font-style:normal;font-size:11px;color:var(--candle)}
 .slot em{position:absolute;left:3px;top:1px;font-style:normal;font-size:10px;color:var(--ash)}.slot u{position:absolute;left:0;right:0;bottom:0;background:rgba(8,11,18,.82);height:0}
-.slot.empty b{opacity:.25}.slot.sm{width:42px;height:42px}
+.slot.empty b{opacity:.25}.slot.sm{width:42px;height:42px}.slot.off{opacity:.35}
+.slot.txt b{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
 #prompt{left:50%;bottom:calc(var(--gb) + 66px);transform:translateX(-50%);font-size:15px;letter-spacing:.06em;text-transform:uppercase;background:rgba(8,11,18,.7);padding:7px 14px;border-left:2px solid var(--blood);white-space:nowrap;max-width:92vw;overflow:hidden;text-overflow:ellipsis}
 #feed{left:50%;bottom:calc(var(--gb) + 110px);transform:translateX(-50%);width:min(70vw,300px);text-align:center;font-size:12px;letter-spacing:.12em;text-transform:uppercase}
 #feed i{display:block;position:relative;height:12px;background:rgba(8,11,18,.7);border:1px solid var(--blood);margin-top:4px}#feedfill{display:block;height:100%;background:var(--blood-hi)}
@@ -74,7 +80,7 @@ button:focus-visible{outline:2px solid var(--candle);outline-offset:2px}
 .pad.on{background:rgba(179,18,42,.6)}.pad.cd{opacity:.4}.pad.hot{border-color:#ffe040;color:#ffe040}
 #pJ{right:0;bottom:0;width:86px;height:86px;border-color:var(--blood-hi);font-size:14px}#pSp{right:96px;bottom:2px}#pB{right:82px;bottom:72px}#pF{right:8px;bottom:98px;width:54px;height:54px}
 #pE{right:166px;bottom:34px;width:54px;height:54px}#pR{right:160px;bottom:100px;width:50px;height:50px;border-color:var(--moss)}
-#p0,#p1,#p2,#p3{width:46px;height:46px;bottom:170px;font-size:20px;border-color:var(--vervain)}#p0{right:162px}#p1{right:110px}#p2{right:58px}#p3{right:6px}
+#p0,#p1,#p2,#p3,#pG{width:44px;height:44px;bottom:170px;font-size:20px;border-color:var(--vervain)}#pG{right:192px;font-size:10px;letter-spacing:.04em;border-color:var(--candle)}#p0{right:144px}#p1{right:96px}#p2{right:48px}#p3{right:0}
 body.touch #abar{display:none}body.touch #prompt{bottom:calc(var(--gb) + 236px)}body.touch #loot{bottom:calc(var(--gb) + 240px)}body.touch #feed{bottom:calc(var(--gb) + 280px)}
 
 .veil{position:fixed;inset:0;display:grid;place-items:center;background:rgba(6,8,14,.74);padding:20px max(16px,env(safe-area-inset-right,0px)) 20px max(16px,env(safe-area-inset-left,0px));overflow:auto;z-index:5}
@@ -114,7 +120,10 @@ body.touch #abar{display:none}body.touch #prompt{bottom:calc(var(--gb) + 236px)}
 .stat,.skill{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;border-bottom:1px solid var(--line);padding:6px 0}
 .stat b,.skill b{font-size:15px;font-weight:600;letter-spacing:.03em}.stat span,.skill span{display:block;font-size:13px;color:var(--ash);line-height:1.3;grid-column:1}.stat .btn{grid-row:1/3;grid-column:2}
 .skill.known b{color:var(--candle)}.skill.locked{opacity:.45}.skill i{color:var(--moss);font-style:normal}.skill .row{margin:0;flex-wrap:nowrap}
-section.shut{opacity:.5}
+section.shut h2{color:var(--ash)}section.shut .skill{opacity:.5}section.shut summary{cursor:pointer;list-style:none}section.shut summary::-webkit-details-marker{display:none}
+section.shut summary u{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--candle);text-decoration:none}section.shut details:not([open]) summary u::after{content:"Show what is in it"}section.shut details[open] summary u::after{content:"Hide"}
+.why{color:var(--bone);font-size:14px;line-height:1.35;margin:2px 0 6px;border-left:2px solid var(--blood);padding-left:8px}
+.entry{border-left:2px solid var(--line);padding:2px 0 2px 10px;min-width:0}.entry b{display:block;font-family:var(--display);font-size:19px;font-weight:400;color:var(--candle)}.entry span{display:block;font-size:14px;line-height:1.4;color:var(--bone);text-wrap:pretty}
 .quest{border-left:2px solid var(--candle);padding:2px 0 2px 10px;margin:0 0 12px}.quest b{font-family:var(--display);font-size:19px;font-weight:400;font-style:italic;color:var(--candle)}.quest span{display:block;font-size:14px;line-height:1.35}.quest .done{color:var(--ash)}
 .paper{background:var(--paper);color:var(--paper-ink);padding:18px 20px;font-family:var(--display);font-size:17px;line-height:1.45;max-height:70vh;overflow:auto}
 .paper h2{font-style:italic;color:var(--paper-ink)}.paper p{margin:0 0 14px;text-wrap:pretty}.paper p small{display:block;color:rgba(42,29,20,.6)!important;letter-spacing:.14em!important;text-transform:uppercase!important;font-size:11px!important}
@@ -125,37 +134,53 @@ textarea{width:100%;background:rgba(233,224,207,.06);border:1px solid var(--line
 #tip{position:fixed;z-index:9}
 
 #title .inner,#death .inner{width:min(100%,600px);text-align:center}
+#title .inner{display:flex;flex-direction:column;align-self:stretch}#title .go{margin-top:auto;padding-top:14px}#title .sub{max-width:600px;align-self:center}
 #title{background:radial-gradient(ellipse at 50% 40%,rgba(8,11,18,.35),rgba(6,8,14,.9));z-index:6;align-items:start;padding-top:max(8vh,40px)}
 h1{font-family:var(--display);font-weight:400;font-size:clamp(46px,11vw,92px);line-height:.95;margin:0;letter-spacing:.01em;text-wrap:balance}h1 em{color:var(--blood-hi)}
 .sub{font-family:var(--display);font-style:italic;font-size:19px;color:var(--bone);margin:10px 0 20px;text-shadow:0 1px 4px #000}
 .looks{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:0 0 18px}
+.pick{font-size:12px;line-height:1.35;letter-spacing:.1em;text-transform:uppercase;color:var(--candle);margin:0 auto 8px;max-width:600px;text-shadow:0 1px 3px #000;text-wrap:balance}
+.origins{display:grid;grid-template-columns:1fr 1fr;gap:6px;text-align:left}
+.origin{background:rgba(8,11,18,.74);border:1px solid var(--line);border-left-width:3px;padding:7px 10px 8px;min-width:0;text-align:left;color:var(--ash)}
+.origin b{display:block;font-family:var(--display);font-weight:400;font-size:19px;color:var(--bone)}.origin span{display:block;font-size:13px;line-height:1.3;letter-spacing:.02em;font-weight:500}
+.origin:hover{border-color:rgba(233,224,207,.4)}.origin.on{border-color:var(--candle);background:rgba(8,11,18,.9);color:var(--bone)}.origin.on b{color:var(--candle)}
+@media (min-width:760px){#title .inner{width:min(100%,1060px)}.origins{column-gap:min(28vw,340px);row-gap:10px}.origin span{font-size:14px}}
 .big{background:var(--blood);border:0;color:var(--bone);padding:12px 26px;font-size:15px;letter-spacing:.18em;font-weight:600;text-transform:uppercase;margin:3px}
 .big.alt{background:rgba(8,11,18,.7);border:1px solid var(--candle);color:var(--candle)}.big:disabled{opacity:.5}
 .fine{font-size:11px;letter-spacing:.08em;color:var(--ash);margin-top:18px;text-transform:uppercase;text-shadow:0 1px 3px #000}
 #death{z-index:7;background:rgba(6,2,4,.86)}#death h1{font-size:clamp(40px,9vw,70px);color:var(--blood-hi)}#deathtxt{font-family:var(--display);font-size:20px;line-height:1.4;margin:16px 0 6px}#deathsub{color:var(--ash);font-size:13px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:18px}
 @media (prefers-reduced-motion:reduce){#banner.go,#toasts div,#loot div{animation-timing-function:step-end}}
-@media (max-width:640px){#mini{width:92px;height:92px}#clock{font-size:18px}#toasts{top:calc(var(--gt) + 240px);font-size:16px}#quests{top:calc(var(--gt) + 122px);width:54vw}.q span{font-size:12px}#bossbar{top:calc(var(--gt) + 112px);width:70vw}#bossname{font-size:18px}#vitals{width:50vw}#lvl{width:38px;height:38px;font-size:18px}.detail{position:static}}
+@media (max-width:640px){#mini{width:92px;height:92px}#clock{font-size:18px}#toasts{top:calc(var(--gt) + 240px);font-size:16px}#left{width:54vw}.q span{font-size:12px}#bossbar{top:calc(var(--gt) + 112px);width:70vw}#bossname{font-size:18px}#vitals{width:50vw}#lvl{width:38px;height:38px;font-size:18px}.detail{position:static}
+  #title{padding-top:max(4vh,24px)}.sub{font-size:16px;margin:6px 0 12px}.looks{margin-bottom:12px}.looks .big{padding:9px 11px;font-size:13px;letter-spacing:.1em;margin:0}.pick{font-size:11px}.origin{padding:6px 8px 7px}.origin b{font-size:17px}.origin span{font-size:12.5px;line-height:1.25}}
 @media (max-height:520px){#quests{display:none}#toasts{top:calc(var(--gt) + 40px)}}
 </style>
 
 <canvas id="c"></canvas><canvas id="fxc"></canvas>
 
 <div id="hud" hidden>
-  <div class="hud" id="vitals">
-    <div id="lvl">1</div>
-    <div class="bar" id="bHp"><u></u><span></span></div>
-    <div class="bar" id="bSt"><u></u><span></span></div>
-    <div class="bar focus" id="bRes"><u></u><span></span></div>
-    <div class="bar" id="bRes2" hidden style="grid-column:2"><u></u><span></span></div>
-    <div id="xp"><i id="xpfill"></i></div>
-    <div id="gold"></div><div id="status"></div><div id="pts" hidden></div>
+  <div class="hud" id="left">
+    <div id="vitals">
+      <div id="lvl">1</div>
+      <div id="bars">
+        <div class="bar" id="bHp"><u></u><span></span></div>
+        <div class="bar" id="bSt"><u></u><span></span></div>
+        <div class="bar sm focus" id="bFoc" hidden><u></u><span></span></div>
+        <div class="bar sm blood" id="bBl" hidden><u></u><span></span></div>
+        <div class="bar sm rage" id="bRg" hidden><u></u><span></span></div>
+      </div>
+      <div id="xp"><i id="xpfill"></i></div>
+      <div id="trans" hidden></div>
+      <div id="gold"></div><div id="status"></div><div id="pts" hidden></div>
+    </div>
+    <div id="quests"></div>
   </div>
-  <div class="hud" id="quests"></div>
-  <div class="hud" id="tr"><canvas id="mini" width="160" height="160"></canvas><div id="clock"></div><div id="daymoon"></div><div id="zone"></div><button id="tMenu" type="button">Menu</button></div>
+  <div class="hud" id="tr"><canvas id="mini" width="160" height="160"></canvas><div id="clockrow"><canvas id="moonc" width="32" height="32"></canvas><span id="clock"></span></div><div id="daymoon"></div><div id="moonline" hidden></div><div id="zone"></div><button id="tMenu" type="button">Menu</button></div>
   <div class="hud" id="bossbar" hidden><div id="bossname"></div><div id="bosssub"></div><i><u id="bossfill"></u></i></div>
   <div class="hud" id="abar">
     <div class="slot sm" id="sR"><em>F</em><b>➶</b><u></u></div>
+    <div class="slot sm txt" id="sWb" hidden><em>J</em><b>Bite</b></div><div class="slot sm txt" id="sWp" hidden><em>K</em><b>Pounce</b></div>
     <div class="slot" id="s0"><em>1</em><b></b><u></u></div><div class="slot" id="s1"><em>2</em><b></b><u></u></div><div class="slot" id="s2"><em>3</em><b></b><u></u></div><div class="slot" id="s3"><em>4</em><b></b><u></u></div>
+    <div class="slot sm txt" id="sG" hidden><em>G</em><b>Shift</b><u></u></div>
     <div class="slot sm" id="sH"><em>R</em><b>✚</b><i>0</i><u></u></div>
   </div>
   <div class="hud" id="toasts"></div><div class="hud" id="loot"></div>
@@ -166,7 +191,7 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(46px,11vw,92px);li
   <div id="touch" hidden>
     <div id="joy"></div><div id="stick" hidden><i></i></div>
     <div id="pads">
-      <button class="pad" id="p0" type="button" data-k="1" hidden></button><button class="pad" id="p1" type="button" data-k="2" hidden></button><button class="pad" id="p2" type="button" data-k="3" hidden></button><button class="pad" id="p3" type="button" data-k="4" hidden></button>
+      <button class="pad" id="pG" type="button" data-k="g" hidden>Shift</button><button class="pad" id="p0" type="button" data-k="1" hidden></button><button class="pad" id="p1" type="button" data-k="2" hidden></button><button class="pad" id="p2" type="button" data-k="3" hidden></button><button class="pad" id="p3" type="button" data-k="4" hidden></button>
       <button class="pad" id="pR" type="button" data-k="r">✚</button><button class="pad" id="pE" type="button" data-k="e">Use</button><button class="pad" id="pF" type="button" data-k="f">Shoot</button>
       <button class="pad" id="pB" type="button" data-k="shift">Block</button><button class="pad" id="pSp" type="button" data-k=" ">Dodge</button><button class="pad" id="pJ" type="button" data-k="j">Attack</button>
     </div>
@@ -182,9 +207,13 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(46px,11vw,92px);li
     <h1>Hollow <em>Moon</em></h1>
     <p class="sub">Mystic Falls, Virginia. You are new in town, and alive. Whether you stay either is up to you.</p>
     <div class="looks"><button class="big alt" type="button" data-look="skin">Skin</button><button class="big alt" type="button" data-look="hair">Hair colour</button><button class="big alt" type="button" data-look="long">Hair length</button><button class="big alt" type="button" data-look="coat">Coat</button></div>
-    <button class="big" id="continue" type="button" hidden></button>
-    <button class="big" id="begin" type="button" disabled>Raising the town…</button>
-    <p class="fine">Unofficial fan game. Original characters, not affiliated with the series.</p>
+    <p class="pick">Choose a bloodline. It is what you were born with and it never changes. Whichever you choose, you arrive human, and you stay human until you decide otherwise.</p>
+    <div class="origins" id="origins"></div>
+    <div class="go">
+      <button class="big" id="continue" type="button" hidden></button>
+      <button class="big" id="begin" type="button" disabled>Raising the town…</button>
+      <p class="fine">Unofficial fan game. Original characters, not affiliated with the series.</p>
+    </div>
   </div>
 </div>
 <div class="veil" id="death" hidden><div class="inner"><h1>You fell</h1><div id="deathtxt"></div><div id="deathsub"></div><button class="big" id="respawn" type="button">Get up</button></div></div>
