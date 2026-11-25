@@ -44,7 +44,7 @@ button:focus-visible{outline:2px solid var(--candle);outline-offset:2px}
 #mini{width:132px;height:132px;border:1px solid var(--line);border-radius:50%;background:#0a0e16}
 #clock{font-family:var(--display);font-size:22px;font-weight:400;letter-spacing:.02em;line-height:1}
 #clockrow{display:flex;gap:7px;align-items:center}#moonc{width:16px;height:16px;display:block}
-#daymoon,#zone,#moonline{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ash)}#zone{color:var(--candle)}#moonline.full{color:#ffe040}
+#daymoon,#zone,#moonline{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ash)}#zone{color:var(--candle)}#moonline{max-width:min(40vw,250px);line-height:1.25}#moonline.full{color:#ffe040}
 #tMenu{pointer-events:auto;background:rgba(8,11,18,.62);border:1px solid var(--line);padding:5px 10px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin-top:3px}
 #bossbar{top:calc(var(--gt) + 4px);left:50%;transform:translateX(-50%);width:min(46vw,520px);text-align:center}
 #bossname{font-family:var(--display);font-size:22px;font-weight:400;letter-spacing:.02em;color:var(--bone)}
@@ -151,7 +151,8 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(46px,11vw,92px);li
 #death{z-index:7;background:rgba(6,2,4,.86)}#death h1{font-size:clamp(40px,9vw,70px);color:var(--blood-hi)}#deathtxt{font-family:var(--display);font-size:20px;line-height:1.4;margin:16px 0 6px}#deathsub{color:var(--ash);font-size:13px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:18px}
 @media (prefers-reduced-motion:reduce){#banner.go,#toasts div,#loot div{animation-timing-function:step-end}}
 @media (max-width:640px){#mini{width:92px;height:92px}#clock{font-size:18px}#toasts{top:calc(var(--gt) + 240px);font-size:16px}#left{width:54vw}.q span{font-size:12px}#bossbar{top:calc(var(--gt) + 112px);width:70vw}#bossname{font-size:18px}#vitals{width:50vw}#lvl{width:38px;height:38px;font-size:18px}.detail{position:static}
-  #title{padding-top:max(4vh,24px)}.sub{font-size:16px;margin:6px 0 12px}.looks{margin-bottom:12px}.looks .big{padding:9px 11px;font-size:13px;letter-spacing:.1em;margin:0}.pick{font-size:11px}.origin{padding:6px 8px 7px}.origin b{font-size:17px}.origin span{font-size:12.5px;line-height:1.25}}
+  #title{padding-top:max(4vh,24px)}.sub{font-size:16px;margin:6px 0 12px}.looks{margin-bottom:12px}.looks .big{padding:9px 11px;font-size:13px;letter-spacing:.1em;margin:0}.pick{font-size:11px}.origin{padding:6px 8px 7px}.origin b{font-size:17px}.origin span{font-size:12.5px;line-height:1.25}
+  #prompt{white-space:normal;width:max-content;font-size:13px;line-height:1.25}#hud:has(#bossbar:not([hidden])) #quests{display:none}}
 @media (max-height:520px){#quests{display:none}#toasts{top:calc(var(--gt) + 40px)}}
 </style>
 
