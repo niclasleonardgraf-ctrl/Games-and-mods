@@ -66,7 +66,7 @@ function recalc() {
   const pen = (animal ? 0.9 : 1) * (1 - 0.15 * desic) * (guilt ? 0.7 : 1) * (vervd ? 0.85 : 1) * (wbaned ? 0.8 : 1) * (venom ? (orig ? 0.9 : 0.9 - 0.25 * clamp(1 - (S.venomUntil - now) / 24, 0, 1)) : 1);   // venom is a day's slow death to a vampire, a flat fever to an Original
   P.meleeM = (1 + a.mig * 0.02 + st.dmg / 100 + 0.06 * sk('h_weapon') + (vamp ? 0.1 + 0.05 * sk('v_pred') : 0) + (wolfK ? (vamp ? 0.04 : 0.05) + (wf ? 0.08 : 0.04) * might : gene ? 0.03 : 0) + (tr ? 0.03 : 0) + bonus) * ascP * pen;
   P.rangedM = (1 + a.fin * 0.02 + st.dmg / 100 + 0.08 * sk('h_marks') + bonus) * ascP * pen;
-  P.spellBase = (7 * lvlScale(L) + (staff && magic ? up(w, w.dmg) * 0.7 : 0)) * (1 + a.wil * 0.025 + st.spell / 100 + (magic ? 0.08 * sk('w_attune') + (sk('w_express') ? 0.3 : 0) + (drawn ? 0.06 * chan : 0) + (hundred ? 1 : 0) : 0) + (off ? 0.15 + 0.05 * sk('v_ripper') : 0)) * ascP * pen;
+  P.spellBase = (7 * lvlScale(L) + (staff && magic ? up(w, w.dmg) * 0.7 : 0)) * (1 + a.wil * 0.025 + st.spell / 100 + (magic ? 0.08 * sk('w_attune') + (sk('w_express') ? 0.3 : 0) + (drawn ? 0.06 * chan : 0) : 0) + (off ? 0.15 + 0.05 * sk('v_ripper') : 0)) * ascP * pen * (hundred ? 2 : 1);   /* the Hundred double whatever the witch already had: the altar says twice, and it is twice */
   const favour = magic && !vamp && !sk('w_express') ? sk('w_spirit') : 0;
   P.crit = 5 + a.fin * 0.4 + st.crit + (vamp ? 4 * sk('v_sense') : 0) + (wolfK ? 4 * sk('l_senses') : 0); P.spellCrit = 3 * favour; P.spiritFoc = 3 * favour; P.critMult = 1.6 + st.critd / 100;
   P.as = 1 + a.fin * 0.004 + st.as / 100 + S.asc.swi * 0.01 + (vamp ? 0.08 : 0) + (wf ? 0.1 : 0) + (orig ? 0.05 : 0);
@@ -132,13 +132,21 @@ function upgrade(it) { const c = upCost(it); if ((it.up || 0) >= 10) return toas
 /* the witch who spelled a daylight ring can take the spell back out, and put it back */
 function despellRing(on) { const r = Object.values(S.eq).concat(S.inv).find(i => i && i.uniq === 'daylight'); if (!r || !!r.despelled === !!on) return false; r.despelled = !!on; recalc(); sfx(on ? 'deny' : 'magic'); toast(on ? 'The ring goes cold on your hand. It is only a stone now. The sun will burn you.' : 'The ring is warm again. The sun is yours.'); return true; }
 /* the one irreversible sip: ask first */
-function askTurn(k, line) { if (RT.menu) closeMenu(); say([['', line]], [['Drink it.', () => { if (!(S.cons[k] > 0) || !S.transition) return; S.cons[k]--; completeTransition(); }], ['Not yet.', () => { }]]); return true; }
+/* what this character in particular gives up by finishing the change, said once more at the last gate (the blood bag here, a bite in 35-player) */
+function turnLoss() {
+  const out = []; if (S.origin === 'witch' && S.flags.witch) { let n = 0; for (const k in S.skills) if (SK[k] && SK[k].tree === 'witch') n += S.skills[k]; out.push('You are a witch. The craft goes out of you the moment you turn, and it stays gone for as long as you are a vampire.' + (n ? ` The ${n} skill ${n === 1 ? 'point' : 'points'} you put into it ${n === 1 ? 'comes' : 'come'} back to spend.` : '')); }
+  else if (S.origin === 'witch') out.push('The craft asleep in your blood goes out when you turn. Nobody can wake it in a vampire.');
+  if (S.skills.h_five) out.push("The Hunter's Mark leaves your arm when you turn. The Five do not take the dead. Its skill point comes back.");
+  return out.join(' ');
+}
+const turnLines = line => { const x = turnLoss(); return x ? [['', line], ['', x]] : [['', line]]; };
+function askTurn(k, line) { if (RT.menu) closeMenu(); say(turnLines(line), [['Drink it.', () => { if (!(S.cons[k] > 0) || !S.transition) return; S.cons[k]--; completeTransition(); }], ['Not yet.', () => { }]]); return true; }
 function useCons(k) {
   if (!(S.cons[k] > 0) || !CONS[k] || !pl || pl.dead) return false; if (pl.wolf) { toast('Not with paws.'); return false; }
   const vamp = isVamp(), tr = S.transition, herb = 1 + 0.15 * (canMagic() ? sk('w_herb') : 0), scald = (f, line) => { pl.hp = Math.max(1, pl.hp - P.maxHp * 0.1); pl.fx[f] = Math.max(pl.fx[f] || 0, 8); sfx('hurt'); toast(line); recalc(); };
   switch (k) {
     case 'draught': if (pl.hp >= P.maxHp || pl.healCd > 0) return false; if (vamp && pl.fx.lodged > 0) { toast('Nothing closes while the wood is still in you. Pull it out first.'); return false; } if (venomed()) { toast("Nothing heals while the venom is in you. Only Corvin's blood lifts it."); return false; } heal(P.maxHp * 0.4 * herb); pl.healCd = 6; sfx('heal'); break;
-    case 'tonic': if (S.origin === 'siphoner') { toast('There is nothing in you for it to wake. You have to take magic from something that has it.'); return false; } if (pl.foc >= P.maxFoc) return false; pl.foc = Math.min(P.maxFoc, pl.foc + P.maxFoc * 0.6 * herb); sfx('heal'); break;
+    case 'tonic': if (S.origin === 'siphoner') { toast('There is nothing in you for it to wake. You have to take magic from something that has it.'); return false; } if (!canMagic()) { toast(S.origin !== 'witch' ? 'It is for witches. There is no magic in you for it to wake. You keep it.' : vamp || tr ? 'There is no magic left in you for it to wake. You keep it.' : 'The craft is still asleep in you. There is nothing awake for it to feed. You keep it.'); return false; } if (pl.foc >= P.maxFoc) return false; pl.foc = Math.min(P.maxFoc, pl.foc + P.maxFoc * 0.6 * herb); sfx('heal'); break;
     case 'bloodbag':
       if (tr) { if (tr.to === 'hybrid') { sfx('bite'); toast("You drink it and nothing changes. Only the doppelgänger's blood will finish this."); break; } return askTurn(k, 'Human blood. Drink it and you are a vampire, for good: the sun, the hunger, all of it. Leave it and the day runs out, and you die the ordinary way.'); }
       if (!vamp) { toast('You could not stomach that. Not yet.'); return false; } pl.blood = Math.min(P.maxBlood, pl.blood + 50); S.diet = 'human'; pl.dryT = 0; if (venomed()) toast('It feeds you. It closes nothing while the venom is in you.'); heal(P.maxHp * 0.25); pl.healCd = 4; sfx('bite'); recalc(); break;
@@ -196,6 +204,8 @@ function refundTree(t) { let n = 0; for (const k in S.skills) if (!SK[k] || SK[k
 /* ---------------- becoming something else ----------------
    Nothing here happens to the player by accident: the curse wakes only through triggerCurse (a deliberate killing), a transition starts only after they drank the blood,
    and it completes only when they choose to feed. Letting it lapse puts the story back to the hour before they died. */
+/* a toast that follows a change after a pause. It is dropped if the story has been put back or another save loaded in the meantime (S is a new object then), or if ok() no longer holds. */
+function toastLater(ms, ok, t) { const s0 = S; setTimeout(() => { if (S === s0 && pl && (!ok || ok())) toast(t); }, ms); }
 function blackout(lines, fn, hold = 2600) { if (RT.menu) closeMenu(); RT.blk = true; const b = $('black'); b.innerHTML = ''; lines.forEach(l => b.appendChild(el('p', '', l))); b.classList.add('on'); setTimeout(() => { fn && fn(); b.classList.remove('on'); RT.blk = false; }, hold + lines.length * 900); }
 function keepSnap(key) { if (saveOff) return; const j = snapshot(); (RT.snaps = RT.snaps || {})[key] = j; try { localStorage.setItem(key, j); } catch (e) { } }
 /* the saved hour under key, if it is this character's: one left behind by another character (a new game on top, a loaded save code) is not ours to go back to */
@@ -214,7 +224,7 @@ function rewind(key, note) {
 function triggerCurse() {
   if (S.origin !== 'wolf' || S.species !== 'human' || S.transition) return false; S.species = 'werewolf'; S.flags.triggered = S.day; S.sp += 2; if (pl) pl.rage = 100; recalc(); sfx('howl'); RT.flashV = 0.3;
   banner('The curse wakes', 'The Werewolf tree is open'); toast(`You took a life, and something in your blood has been waiting for that. ${fullTonight() ? 'The moon is full tonight.' : 'On the next full moon you will change, whether you want to or not.'}`);
-  setTimeout(() => toast('Two skill points. A moonlight ring, or chains in the Lockwood cellar, are the only say you get.'), 5400); diary('triggered'); codex('werewolf'); qEvent('triggered'); save(); return true;
+  toastLater(5400, isWolf, 'Two skill points. A moonlight ring, or chains in the Lockwood cellar, are the only say you get.'); diary('triggered'); codex('werewolf'); qEvent('triggered'); save(); return true;
 }
 /* dying with vampire blood in you: wake in transition, after dark, with a day to decide. to: 'vampire' | 'hybrid'. how: 'vblood' | 'hblood' | 'ambrose' | anything the story likes. */
 function beginTransition(to, how) {
@@ -227,23 +237,24 @@ function beginTransition(to, how) {
     S.flags.vblood = S.flags.vbloodT = S.flags.hblood = S.flags.hbloodT = 0; shiftForm(false); if (!(S.clock >= 20.5 || S.clock < 4)) skipTo(20.6);
     S.transition = { to, until: absHours() + 24, sire: 'corvin' }; S.exposure = 0; standUp(); enterArea('world', HOME); recalc(); pl.hp = P.maxHp * 0.6; diary('transition'); codex('transition'); qEvent('transition', to);
     toast(to === 'hybrid' ? "You are in transition. Only the doppelgänger's blood will finish it, and ordinary blood will not. You have until this time tomorrow." : 'You are in transition. Drink human blood before this time tomorrow and you become a vampire. Do nothing and you die, the ordinary way. Either is allowed.');
-    setTimeout(() => toast(to === 'hybrid' ? 'You are not a hybrid yet. The sun only stings.' : 'You are not a vampire yet: no speed, no thirst you cannot refuse, and the sun only hurts your eyes.'), 5400); save();
+    const tr0 = S.transition; toastLater(5400, () => S.transition === tr0 && !pl.dead && !RT.blk, to === 'hybrid' ? 'You are not a hybrid yet. The sun only stings.' : 'You are not a vampire yet: no speed, no thirst you cannot refuse, and the sun only hurts your eyes.'); save();
   });
   return true;
 }
 const turnVampire = how => beginTransition('vampire', how);   // old name, kept for callers
 /* a living person's vervain does not stay with the dead: the locket comes off (equip refuses it to a vampire), and what was drunk no longer shields the mind */
-function shedVervain() { S.flags.vervUntil = 0; const lk = S.eq.amulet; if (lk && lk.uniq === 'vlocket') { S.eq.amulet = null; S.inv.push(lk); setTimeout(() => toast("Elspeth's locket burns your throat. You tear it off."), 2600); } }
+function shedVervain() { S.flags.vervUntil = 0; const lk = S.eq.amulet; if (lk && lk.uniq === 'vlocket') { S.eq.amulet = null; S.inv.push(lk); toastLater(2600, isVamp, "Elspeth's locket burns your throat. You tear it off."); } }
 /* the first human blood (or, for a hybrid, the doppelgänger's): the change is finished and cannot be undone except by the Cure */
 function completeTransition() {
   const t = S.transition; if (!t || !pl) return false; const hyb = t.to === 'hybrid'; S.species = t.to; S.sire = t.sire || 'corvin'; S.unlinked = !!(S.flags.slain && S.flags.slain[S.sire]); S.transition = null; S.flags.turned = S.day; S.diet = 'human'; S.exposure = 0; S.switchOff = false; dropSnap('hollowmoon.preturn');
-  const lost = S.origin === 'witch' ? refundTree('witch') : 0; if (S.origin === 'siphoner') S.heretic = true; if (S.skills.h_five) { S.sp += S.skills.h_five; delete S.skills.h_five; } S.flags.mark = 0; S.sp += 2;
+  const wasWitch = S.origin === 'witch' && !!S.flags.witch, lost = S.origin === 'witch' ? refundTree('witch') : 0; if (S.origin === 'siphoner') S.heretic = true; if (S.skills.h_five) { S.sp += S.skills.h_five; delete S.skills.h_five; } S.flags.mark = 0; S.sp += 2;
   shedVervain(); if (hyb) S.flags.shifts = 0;   // the sire bond starts now: changes made as a plain werewolf do not count against it
-  recalc(); pl.hp = P.maxHp; pl.blood = Math.max(pl.blood || 0, 40); pl.dryT = 0; refreshGear(); sfx('turn'); RT.flashV = 0.35; banner(hyb ? 'Hybrid' : S.heretic ? 'Heretic' : 'Vampire', hyb ? 'Wolf and vampire both' : 'The Vampire tree is open');
+  recalc(); pl.hp = P.maxHp; pl.blood = Math.max(pl.blood || 0, 40); pl.dryT = 0; refreshGear(); sfx('turn'); RT.flashV = 0.35; const what = () => banner(hyb ? 'Hybrid' : S.heretic ? 'Heretic' : 'Vampire', hyb ? 'Wolf and vampire both' : 'The Vampire tree is open'); what();
   toast(hyb ? 'It is done. You are a hybrid: the sun cannot touch you, you change when you choose, and your bite is venom. You owe Corvin for it, and you will feel that.' : 'It is done. You are a vampire. Until a witch makes you a daylight ring, the sun will kill you.');
-  if (lost) setTimeout(() => toast(`The magic has gone out of you for good. ${lost} skill points returned.`), 5400); else if (S.heretic) setTimeout(() => toast('You still siphon. Your spells now feed on your own blood.'), 5400);
-  setTimeout(() => toast(hyb ? 'Vervain and wolfsbane both burn you now. A hundred willing changes break the sire bond.' : 'Two skill points. Sleep through the day at the boarding house, if Mrs. Pruitt asks you in.'), 10800);
-  diary(hyb ? 'hybrid' : 'turned'); codex(hyb ? 'hybrid' : S.heretic ? 'heretic' : 'vampire'); qEvent('turned', t.to); save(); return true;
+  if (lost || wasWitch) toastLater(5400, isVamp, 'The magic has gone out of you. It will not come back while you are a vampire.' + (lost ? ` ${lost} skill points returned.` : '')); else if (S.heretic) toastLater(5400, () => !!S.heretic, 'You still siphon. Your spells now feed on your own blood.');
+  toastLater(10800, () => S.species === t.to, hyb ? 'Vervain and wolfsbane both burn you now. A hundred willing changes break the sire bond.' : 'Two skill points. Sleep through the day at the boarding house, if Mrs. Pruitt asks you in.');
+  diary(hyb ? 'hybrid' : 'turned'); codex(hyb ? 'hybrid' : S.heretic ? 'heretic' : 'vampire'); qEvent('turned', t.to); what();   /* the story may have started a quest in the same breath: what the player has become is shown first, and the quest's banner follows it (45-story, 'turned') */
+  save(); return true;
 }
 /* the day ran out, or they were killed again before feeding: a real death. The story goes back to the hour before they died. */
 function failTransition(why) {
@@ -264,10 +275,10 @@ function becomeOriginal() {
 /* the Cure: human again for good (a hybrid goes back to the wolf it was). Whoever takes it can never be turned again. */
 function cureVampire(spend) {   // spend: take the dose out of the pack, in the same step as the change, so no save can hold one without the other
   if (!isVamp()) return false;
-  blackout(['It tastes of nothing at all.', 'Then everything hurts, the ordinary way.', 'The sun comes through the window and you let it.'], () => {
+  blackout(['It tastes of nothing at all.', 'Then everything hurts, the ordinary way.', sunUp() ? 'The sun comes through the window and you let it.' : 'Tomorrow the sun will come through the window, and you will let it.'], () => {
     if (spend) S.cons.cure = Math.max(0, (S.cons.cure || 0) - 1); const wolf = S.species === 'hybrid'; S.species = wolf ? 'werewolf' : 'human'; S.heretic = false; S.original = false; S.transition = null; S.sire = null; S.unlinked = false; S.switchOff = false; S.venomUntil = 0; S.curseUntil = 0; S.diet = 'human'; S.flags.cured = 1; S.flags.lineDeathAt = 0; S.flags.guiltT = 0;
     const back = refundTree('vampire') + refundTree('original'); S.humanity = 100; S.exposure = 0; if (pl.dryT) pl.dryT = 0; recalc(); pl.hp = P.maxHp; refreshGear(); diary('cured'); codex('cure');
-    toast(`You are ${wolf ? 'a werewolf again, and only that' : 'human again'}. ${back} skill points returned. No blood will ever turn you now.`); if (canMagic()) setTimeout(() => toast('The craft has come back with your life.'), 5400); qEvent('cured'); save();
+    toast(`You are ${wolf ? 'a werewolf again, and only that' : 'human again'}. ${back} skill points returned. No blood will ever turn you now.`); if (canMagic()) toastLater(5400, canMagic, 'The craft has come back with your life.'); qEvent('cured'); save();
   });
   return true;
 }
@@ -384,7 +395,8 @@ function descend() {
   blackout(['Deeper.'], () => { enterArea('tomb', { depth: d + 1 }); save(); }, 400);
 }
 function leaveTomb() { blackout(['Up, into the air.'], () => { enterArea('world', { x: -130, z: -164 }); save(); }, 400); }
-function fastTravel(p) { if (RT.combatT > 0) { sfx('deny'); return toast('Not while something is hunting you.'); } if (pl.wolf && !isHybrid()) { sfx('deny'); return toast('The wolf does not read signposts.'); } closeMenu(); blackout([p.n + '.'], () => { S.clock += 0.5; enterArea('world', { x: p.x + 1.5, z: p.z + 2 }); save(); }, 300); }
+function fastTravel(p) { /* a refusal closes the map first: the toast sits behind an open menu and would never be seen */
+  if (RT.combatT > 0) { sfx('deny'); if (RT.menu) closeMenu(); return toast('You cannot travel while something is hunting you. Lose it, or finish it, and try again.'); } if (pl.wolf && !isHybrid()) { sfx('deny'); if (RT.menu) closeMenu(); return toast('The wolf does not read signposts.'); } closeMenu(); blackout([p.n + '.'], () => { S.clock += 0.5; enterArea('world', { x: p.x + 1.5, z: p.z + 2 }); save(); }, 300); }
 
 /* ---------------- the clock ---------------- */
 /* jump the clock forward to hour h (tomorrow's, if that hour has passed today), keeping every window honest */
@@ -396,6 +408,7 @@ function sleepUntil(h) {
   if (S.species === 'werewolf' && !hasUniq('moonring') && S.clock >= 6 && S.clock < 20 && fullTonight() && (h > 20 || h <= S.clock)) return toast('The moon is full tonight. You will not sleep through it. Chain yourself in the Lockwood cellar, or be somewhere there is nobody to hurt.');
   const hrs = (h - S.clock + 24) % 24 || 24, go = () => blackout([h < 12 ? 'You sleep. Morning comes.' : 'You sleep through the day.'], () => { skipTo(h); pl.hp = P.maxHp; pl.sta = P.maxSta; if (S.origin !== 'siphoner') pl.foc = P.maxFoc; if (isVamp()) pl.blood = Math.max(0, pl.blood - 8); S.exposure = Math.max(0, S.exposure - 20); enterArea('world', S.area === 'world' ? { x: pl.x, z: pl.z } : HOME); save(); toast('Rested.'); }, 900);   // you wake where you lay down: the boarding house, or Gault's cellar
   if (S.transition && absHours() + hrs >= S.transition.until) return say([['', 'If you sleep now you will not wake. The day you were given runs out before then, and you have not fed.']], [['Sleep anyway.', go], ['Stay awake.', () => { }]]);
+  if (S.transition && S.transition.until - (absHours() + hrs) < 2) { const m = Math.max(1, Math.round((S.transition.until - (absHours() + hrs)) * 60)); return say([['', `If you sleep now you will wake with ${m >= 60 ? 'about an hour' : m + (m === 1 ? ' minute' : ' minutes')} left of the day you were given, and you have not fed. That is not long enough to find blood.`]], [['Sleep anyway.', go], ['Stay awake.', () => { }]]); }
   if (S.venomUntil > absHours() && !S.original && absHours() + hrs >= S.venomUntil) return say([['', 'The venom will finish its work before you wake.']], [['Sleep anyway.', go], ['Stay awake.', () => { }]]);
   go();
 }
@@ -436,7 +449,7 @@ function playerDeath(src, o) {   // src: the actor that did it, null for a linge
   /* a Founder's Ring brings back an ordinary human killed by something that is not */
   const ring = hasUniq('fring') && S.origin === 'human' && S.species === 'human' && !sk('h_five') && uncanny, lost = ring || how === 'line' ? 0 : Math.floor(S.gold * (how === 'venom' ? 0.25 : 0.1)); S.gold -= lost; RT.ringBack = ring ? 1 : 0; if (ring) { S.flags.ringDeaths = (S.flags.ringDeaths || 0) + 1; codex('fring'); }   // the price is paid on waking (respawn): hours of seeing things, more each time
   const txt = how === 'sun' ? 'The sun found you. What is left of you is carried home in a coat.' : how === 'venom' ? "The fever takes the last of you a day after the bite. You wake at home with a stranger's blood in your mouth and no memory of who paid for it." : how === 'line' ? 'Corvin is dead, and everything he ever made dies with him. You cough blood on the hour, like the rest of his line.'
-    : vamp && S.original ? 'Nothing that was done to you tonight could kill you. You lie grey where you fell until someone carries you home.' : S.species === 'hybrid' ? 'Not your head and not your heart, so not the end. You wake at home with the bones setting.' : vamp ? (ash ? 'White oak ash, through your own hand. The dagger does that to any vampire who uses it. You wake at home hours later, grey to the elbow.' : wood ? 'Oak, a breath from the heart. You wake at home hours later with the splinters working their way out.' : 'Not the heart, not the head, not fire. You wake at home hours later the way your kind does, with the bones setting.')
+    : vamp && S.original ? 'Nothing that was done to you tonight could kill you. You lie grey where you fell until someone carries you home.' : S.species === 'hybrid' ? 'Not your head and not your heart, so not the end. You wake at home with the bones setting.' : vamp ? (ash ? 'White oak ash, through your own hand. The dagger does that to any vampire who uses it. You wake at home hours later, grey to the elbow.' : wood ? 'Oak, a breath from the heart. You wake at home hours later with the splinters working their way out.' : o && o.mat === 'fire' ? 'Fire. Somebody beat it out before it finished you. You wake at home hours later with the new skin still tight.' : 'Not the heart, not the head, not fire. You wake at home hours later the way your kind does, with the bones setting.')
     : S.species === 'werewolf' ? 'A wolf heals faster than it bleeds, just. Someone from the Falls pack leaves you on the boarding house steps.' : ring ? `The ring drags you back from wherever that was. It keeps a little of you each time. That makes ${S.flags.ringDeaths}.`
     : S.origin === 'witch' || S.origin === 'siphoner' ? 'Odette Thorne finds you before the dark does. You wake at the boarding house with her stitches in you and her opinion of you unchanged.' : 'Somebody drags you back to the boarding house. Mrs. Pruitt does not ask questions.';
   const sub = how === 'line' ? (hasSnap('hollowmoon.preboss') ? 'There is no waking from this one. The story goes back to before it was done.' : '') : ring ? 'You lost no gold. For some hours you will see people who are not there, and it is longer every time.' : lost ? `You lost ${lost} gold.` : '';

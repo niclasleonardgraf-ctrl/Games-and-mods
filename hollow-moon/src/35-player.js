@@ -57,12 +57,19 @@ function meleeHit(range, arc, mult, o = {}) { const dmg = P.wdmg * mult * P.mele
 function startLight() {
   const cls = weaponCls(), c = moveSet(), i = (pl.comboT > 0 ? pl.combo : 0) % c.hits.length, h = c.hits[i], d = h[0] / P.as; pl.rot = aimDir();
   pl.act = { type: 'atk', i, t: 0, dur: d, hitAt: d * 0.42, mult: h[1], done: false }; pl.combo = i + 1; pl.comboT = d + 0.5; pl.block = false;
-  pl.sw = { kind: cls === 'wolf' ? 'bite' : c.bolt ? 'cast' : i === 2 ? (cls === 'slow' ? 'over' : 'slashR') : i % 2 ? 'slashL' : 'slashR', t: 0, dur: d, jump: i === 2 ? 0.45 : 0.2 }; pl.kx += Math.sin(pl.rot) * 4.5; pl.kz += Math.cos(pl.rot) * 4.5; sfx(c.bolt ? 'magic' : cls === 'wolf' ? 'bite' : 'swing');
+  pl.sw = { kind: cls === 'wolf' ? 'bite' : c.bolt ? 'cast' : i === 2 ? (cls === 'slow' ? 'over' : 'slashR') : i % 2 ? 'slashL' : 'slashR', t: 0, dur: d, jump: i === 2 ? 0.45 : 0.2 }; const tg = lungeTarget(c.range + 1.5), step = tg ? clamp((d2(pl, tg) - tg.r - pl.r - 0.3) * 6, 0, 4.5) : 4.5;   /* the step into the swing stops short of whoever it is aimed at: three quick cuts at point-blank no longer walk the player through them */
+  pl.kx += Math.sin(pl.rot) * step; pl.kz += Math.cos(pl.rot) * step; sfx(c.bolt ? 'magic' : cls === 'wolf' ? 'bite' : 'swing');
 }
+/* the lunge of a knife or a stake is aimed at somebody: whoever stands nearest the line of the thrust, within about forty degrees either side (or anyone close enough to touch). The dash steers to them
+   and stops at arm's length (lungeStop), so the blow lands from point-blank out to its full range and never carries the player through or past them. With nobody in front it is the old straight dash. */
+const LUNGE_GAP = 0.6;                                                                 // metres left between the two bodies when the dash stops
+function lungeTarget(maxD) { let best = null, bs = 1e9; for (const e of plTargets()) { if (e.dormant) continue; const d = d2(pl, e) - e.r, an = Math.abs(angd(dirTo(pl, e), pl.rot)), calm = e.def.peaceful || neutralTo(e); if (d > maxD || an > (calm ? 0.5 : d < 1.2 ? 1.3 : 0.75)) continue; const s = d + an * 3 + (calm ? 4 : 0); if (s < bs) { bs = s; best = e; } } return best; }
+function lungeStop(a) { const t = a.tg; if (t && (t.dead || t.gone || !actors.includes(t))) a.tg = null; if (a.tg) return d2(pl, a.tg) <= a.tg.r + pl.r + LUNGE_GAP; for (const e of plTargets()) if (d2(pl, e) <= e.r + pl.r + LUNGE_GAP && Math.abs(angd(dirTo(pl, e), pl.rot)) < 0.9) return true; return false; }
 function startHeavy() {
   const c = moveSet(), h = c.heavy; if (pl.sta < h.st * 0.6) { sfx('deny'); return; } if (h.kind === 'blast' && pl.foc < 12) { sfx('deny'); floatText(pl.x, 2.6, pl.z, 'No focus', '#9ab0ff', 13); return; }
   pl.sta = Math.max(0, pl.sta - h.st); pl.staT = 0.8; if (h.kind === 'blast') pl.foc -= 12; pl.rot = aimDir(); const d = h.dur / P.as; pl.heavyUsed = true; pl.combo = 0; pl.block = false;
   pl.act = { type: 'atk', heavy: h.kind, t: 0, dur: d, hitAt: d * (h.kind === 'pounce' ? 0.72 : 0.55), mult: h.mult, done: false, n: 0, pt: aimPoint(h.kind === 'pounce' ? h.dist || 8 : 10) };
+  if (h.kind === 'lunge') pl.act.tg = lungeTarget(c.range + 4.2);
   if (h.kind === 'pounce') { const p = pl.act.pt; pl.rot = dirTo(pl, p); pl.act.len = Math.max(0, d2(pl, p) - 1.2); pl.inv = Math.max(pl.inv, 0.2); telegraph(p.x, p.z, 0, { kind: 'circle', r: 2.4 }, pl.act.hitAt, 0xffd040); }
   pl.sw = { kind: h.kind === 'lunge' ? 'stab' : h.kind === 'over' ? 'over' : h.kind === 'spin' ? 'spin' : h.kind === 'pounce' ? 'bite' : 'cast', t: 0, dur: d, jump: 1.3 }; sfx(h.kind === 'pounce' ? 'growl' : 'heavy');
 }
@@ -71,7 +78,7 @@ function plResolve() {
   // a witch's plain attack is a shove of the mind, not a glowing orb: a pale ripple of pushed air that knocks back whatever it meets
   if (!a.heavy) { if (c.bolt) { if (S.origin === 'siphoner') pl.foc = Math.max(0, pl.foc - 2); const p = shoot(pl, pl.x + Math.sin(pl.rot) * 0.9, pl.z + Math.cos(pl.rot) * 0.9, pl.rot, { spd: 24, dmg: P.spellBase * 0.5 * a.mult, mat: 'magic', col: 0xd8d4c8, pc: PUSHAIR, orb: false, spell: true, range: 20, poise: 8, kb: 4 }); p.m.geometry = orbGeo; p.m.scale.set(1.9, 1.5, 0.3); p.m.material.transparent = true; p.m.material.opacity = 0.36; p.m.material.depthWrite = false; return; }
     trail(pl, c.range, c.arc, col, a.i % 2 ? -1 : 1, pl.wolf ? 0.8 : 1.15); meleeHit(c.range, c.arc, a.mult, { poise: c.poise * (a.i === 2 ? 1.7 : 1), kb: 2 + a.i * 1.5 }); return; }
-  if (a.heavy === 'lunge') { trail(pl, c.range + 1, 1.2, col); meleeHit(c.range + 1.2, 1.3, a.mult, { poise: 45, kb: 5, heavy: 1 }); }
+  if (a.heavy === 'lunge') { if (a.tg && !a.tg.dead && actors.includes(a.tg) && d2(pl, a.tg) < c.range + 1.2 + a.tg.r) pl.rot = dirTo(pl, a.tg); trail(pl, c.range + 1, 1.2, col); meleeHit(c.range + 1.2, 1.3, a.mult, { poise: 45, kb: 5, heavy: 1 }); }
   else if (a.heavy === 'over') { trail(pl, c.range + 0.8, 1.6, col); meleeHit(c.range + 0.9, 1.5, a.mult, { poise: 70, kb: 6, heavy: 1 }); const fx_ = pl.x + Math.sin(pl.rot) * 2.4, fz = pl.z + Math.cos(pl.rot) * 2.4, ward = S.eq.weapon && S.eq.weapon.uniq === 'wardblade'; hazard(fx_, fz, ward ? 5 : 2.6, 0, P.wdmg * P.meleeM * (ward ? 1.2 : 0.5), { team: 0, src: pl, mat: m, poise: 30 }); }
   else if (a.heavy === 'spin') { trail(pl, c.range + 0.5, 6.2, col); meleeHit(c.range + 0.6, 7, a.mult * 0.6, { poise: 40, kb: 5, heavy: 1 }); sfx('swing'); }
   else if (a.heavy === 'pounce') { trail(pl, c.range + 0.6, 2.6, col, 1, 0.8); meleeHit(c.range + 0.9, 2.8, a.mult, { poise: 80, kb: 5, heavy: 1 }); ringFx(pl.x, pl.z, 0xffd040, 3, 0.35); sfx('bite'); RT.shake = Math.max(RT.shake, 0.3); }
@@ -137,7 +144,8 @@ const ABIL = {
   /* Pain Infliction: the blood vessels burst. Vampires, hybrids and werewolves heal, so it can be done to them again and again. A spirit has no blood. */
   w_aneur(r) { pl.sw = { kind: 'cast', t: 0, dur: 0.5 }; sfx('zap'); ringFx(pl.x, pl.z, 0xa080ff, 10, 0.5); RT.shake = 0.3;
     for (const e of plTargets()) { if (d2(pl, e) > 10 || lying(e) || e.def.peaceful || neutralTo(e)) continue; if (e.fam === 'spirit') { floatText(e.x, 2.8, e.z, 'NO BLOOD', '#a0b0c0', 13); continue; } const sup = undead(e) || e.fam === 'wolf';
-      addFx(e, 'stun', sup ? 2 + 0.5 * r : 1); hit(pl, e, { dmg: spDmg() * (sup ? 1.1 + 0.3 * r : 0.5 + 0.15 * r), mat: 'magic', spell: 1 }); puff(e.x, 2, e.z, 8, { c: MAGIC, add: 1, sp: 1.5, life: 0.5, size: 0.22, grav: 0 }); } },
+      /* the numbers on the skill are the numbers here: the blow lands first (so it is not raised by the stun it brings), the stun is the full time for anything but an Original, keepers included, and an Original gets exactly half */
+      hit(pl, e, { dmg: spDmg() * (sup ? 1.1 + 0.3 * r : 0.5 + 0.15 * r), mat: 'magic', spell: 1 }); if (!e.dead && !lying(e)) e.fx.stun = Math.max(e.fx.stun || 0, (sup ? 2 + 0.5 * r : 1) * (isOrig(e) ? 0.5 : 1)); puff(e.x, 2, e.z, 8, { c: MAGIC, add: 1, sp: 1.5, life: 0.5, size: 0.22, grav: 0 }); } },
   w_ward(r) { pl.buff.ward = P.maxHp * (0.2 + 0.1 * r); pl.buff.wardT = 8; pl.sw = { kind: 'cast', t: 0, dur: 0.3 }; sfx('magic'); ringFx(pl.x, pl.z, 0x6a8cff, 3, 0.5); },
   w_cloak(r) { pl.buff.cloak = Math.max(pl.buff.cloak || 0, 4 + 2 * r); pl.sw = { kind: 'cast', t: 0, dur: 0.3 }; sfx('magic'); puff(pl.x, 1.2, pl.z, 26, { c: [0.6, 0.62, 0.7], add: 0.4, sp: 1.6, up: 0.6, life: 0.8, size: 0.5, grav: 0 }); for (const e of actors) if (e.kind === 'enemy' && e.ai && e.fam !== 'witch' && e.fam !== 'spirit') e.ai.aggro = false; floatText(pl.x, 2.8, pl.z, 'CLOAKED', '#c8c0e0', 15); },
   /* Motus: thrown without being touched */
@@ -162,7 +170,7 @@ const ABIL = {
   w_desic() { const t = touchTarget(3, undead); if (!t) return sayNo(pl, 'No vampire within reach');
     if (!(t.downed || t.fx.stun > 0 || t.fx.root > 0 || t.hp / t.maxHp < 0.35)) return sayNo(t, 'Too strong. Stagger it, bind it or wear it down');
     pl.rot = dirTo(pl, t); pl.sw = { kind: 'gaze', t: 0, dur: 0.6 }; sfx('turn'); RT.flashV = 0.18; ringFx(t.x, t.z, 0xb8c0d0, 5, 0.8); puff(t.x, 1.3, t.z, 30, { c: ASH, add: 0.1, sp: 1.6, up: 1, life: 1, size: 0.34, grav: 0.5 }); puff(pl.x, 1.9, pl.z, 6, { c: BLOOD, add: 0.05, sp: 0.8, life: 0.6, size: 0.14 }); floatText(t.x, 3, t.z, 'DESICCATED', '#b8c0d0', 19);
-    if (isOrig(t)) { if (t.downed) t.downT = 1e9; else { t.downFor = 1e9; downEnemy(t, pl); } t.desiccated = true; toast('His heart stops under your hand. He will lie there, grey, until somebody feeds him.' + (isImmortal(t) ? '' : ' Nobody of his line dies for this.')); }
+    if (isOrig(t)) { t.desiccated = true; if (t.downed) t.downT = 1e9; else { t.downFor = 1e9; downEnemy(t, pl); } toast(   /* marked first: the story's "he will be up in a few minutes" is not said of a fall that is a desiccation (45-story storyDowned) */'His heart stops under your hand. He will lie there, grey, until somebody feeds him.' + (isImmortal(t) ? '' : ' Nobody of his line dies for this.')); }
     else if (t.downed) trueDeath(t, pl, { lethal: 'desic' }); else hit(pl, t, { dmg: t.hp + t.maxHp, mat: 'magic', spell: 1, lethal: 'desic', noCrit: 1, noLs: 1 }); },
   /* Fury: the anger let out. The numbers live in recalc; here it is the eyes, and nothing being able to stagger you. */
   l_rage(r) { pl.buff.fury = 6 + 2 * r; pl.fx.stun = 0; recalc(); sfx('growl'); ringFx(pl.x, pl.z, 0xffd040, 5, 0.5); RT.shake = Math.max(RT.shake, 0.3); floatText(pl.x, 2.8, pl.z, 'FURY', '#ffd24a', 18); rigEyes(pl.rigH, 1); },
@@ -281,7 +289,7 @@ function actorInteract(n, dist) {
   if (n.kind === 'npc') {
     if (pl.wolf) return null;                                                                                                // a wolf does not talk, shop or ask nicely
     if (n.npc.talk) return dist < 3.2 ? { label: 'Talk to ' + n.name, act: () => n.npc.talk(n) } : null; if (dist >= 2.5) return null;
-    if (thirst && n.fedDay !== S.day && !(n.fleeT > 0) && n.npc.feed !== 0) return tr ? { label: 'Feed (human blood finishes the change, for good)', act: () => say([['', TURNLINE]], [['Feed.', () => startFeed(n)], ['Not yet.', () => { }]]) } : { label: 'Feed (hold, and let go in time)', act: () => startFeed(n) };
+    if (thirst && n.fedDay !== S.day && !(n.fleeT > 0) && n.npc.feed !== 0) return tr ? { label: 'Feed (human blood finishes the change, for good)', act: () => say(turnLines(TURNLINE), [['Feed.', () => startFeed(n)], ['Not yet.', () => { }]]) } : { label: 'Feed (hold, and let go in time)', act: () => startFeed(n) };
     return n.dazed > 0 || n.fleeT > 0 ? null : { label: 'Talk', act: () => say([[n.name, pick(TOWNIE_BARKS)]]) };
   }
   if (n.kind !== 'enemy' || n.phantom || n.team === 0) return null; const reach = 2.6 + n.r, nm = n.def.n.split(',')[0];
@@ -298,7 +306,7 @@ function actorInteract(n, dist) {
     return { label: `Finish the ${nm}`, act: () => finishDowned(n) }; }
   if (n.dormant || dist >= reach) return null;
   if (thirst && !pl.wolf) { const blood = n.fam === 'human' || n.fam === 'witch' || n.fam === 'animal' || n.fam === 'hybrid' || (n.fam === 'wolf' && n.rig.kind === 'biped');
-    if (tr) { if ((n.fam === 'human' || n.fam === 'witch') && n.fx.stun > 0 && !n.def.boss) return { label: `Feed on the ${nm} (human blood finishes the change, for good)`, act: () => say([['', TURNLINE]], [['Feed.', () => biteEnemy(n)], ['Not yet.', () => { }]]) }; }
+    if (tr) { if ((n.fam === 'human' || n.fam === 'witch') && n.fx.stun > 0 && !n.def.boss) return { label: `Feed on the ${nm} (human blood finishes the change, for good)`, act: () => say(turnLines(TURNLINE), [['Feed.', () => biteEnemy(n)], ['Not yet.', () => { }]]) }; }
     else if (n.def.peaceful && n.fam === 'animal') return { label: `Feed on the ${nm.toLowerCase()} (animal blood)`, act: () => biteEnemy(n) };
     else if (blood && n.fx.stun > 0 && !n.def.boss) return { label: `Feed on the staggered ${nm}`, act: () => biteEnemy(n) }; }
   if (S.origin === 'siphoner' && canMagic() && !pl.wolf && n.fx.stun > 0 && (undead(n) || n.fam === 'wolf' || n.fam === 'witch' || n.fam === 'spirit')) return { label: `Siphon the staggered ${nm}`, act: () => siphonTouch(n) };
@@ -315,7 +323,7 @@ function updPlayer(dt) {
   if (p.staT <= 0 && !p.block) p.sta = Math.min(P.maxSta, p.sta + P.staRegen * dt); p.foc = Math.min(P.maxFoc, p.foc + P.focRegen * dt);
   if (b.burger > 0 && !vamp) heal(P.maxHp * 0.012 * dt, true); if (P.regen > 0) heal(P.regen * dt, true);
   if (vamp) { p.blood = Math.max(0, p.blood - dt * 0.07 * (P.hunger != null ? P.hunger : 1)); const mend = noMend() || p.fx.lodged > 0 ? 0 : P.healM != null ? P.healM : 1, rate = (sk('v_heal') * 0.004 + (combat ? 0 : 0.01)) * mend * P.maxHp; if (p.hp < P.maxHp && p.blood > 0 && rate > 0) { heal(rate * dt, true); p.blood = Math.max(0, p.blood - dt * 0.35); } }
-  else if (!combat && p.hp < P.maxHp && !(wolfK && p.fx.wolfsbane > 0)) heal(P.maxHp * 0.02 * dt, true);
+  else if (!combat && p.hp < P.maxHp && !(wolfK && p.fx.wolfsbane > 0) && !(S.flags.hundredT > 0)) heal(P.maxHp * 0.02 * dt, true);   /* nothing mends while the Hundred are leaning on a witch: that is the price */
   if (wolfK || (S.origin === 'wolf' && !vamp)) { if (!combat) p.rage = Math.max(0, (p.rage || 0) - 2 * dt); } else p.rage = 0;
   if (S.switchOff && vamp && chance(0.2)) puff(p.x, 1.5, p.z, 1, { c: [0.6, 0.02, 0.05], add: 0.6, sp: 0.6, up: 1, life: 0.5, size: 0.25, grav: 0 });
   S.exposure = Math.max(0, S.exposure - dt * 0.06);
@@ -342,7 +350,7 @@ function updPlayer(dt) {
   if (p.fx.lodged > 0) { if (K.e && !p.act) { p.pull += dt; if (chance(0.3)) puff(p.x, 1.3, p.z, 1, { c: BLOOD, add: 0.05, sp: 1, life: 0.4, size: 0.14 }); if (p.pull >= 0.9) pullLodged(); } else p.pull = 0; if (!combat) { p.calm = (p.calm || 0) + dt; if (p.calm > 3) { p.calm = 1.8; pullLodged(); } } else p.calm = 0; } else p.pull = 0;
   const a = p.act;
   if (a) { a.t += dt;
-    if (a.type === 'atk') { if (a.heavy === 'lunge' && a.t > a.dur * 0.25 && a.t < a.hitAt) { for (let i = 0; i < 2; i++) { p.x += Math.sin(p.rot) * 19 * dt / 2; p.z += Math.cos(p.rot) * 19 * dt / 2; collide(p); } }
+    if (a.type === 'atk') { if (a.heavy === 'lunge' && a.t > a.dur * 0.25 && a.t < a.hitAt) { for (let i = 0; i < 4; i++) { if (lungeStop(a)) break; if (a.tg) p.rot = dirTo(p, a.tg); p.x += Math.sin(p.rot) * 19 * dt / 4; p.z += Math.cos(p.rot) * 19 * dt / 4; collide(p); } }   /* the dash stops at arm's length from whoever it is aimed at */
       else if (a.heavy === 'pounce' && a.t > a.dur * 0.12 && a.t < a.hitAt) { const v = a.len / (a.hitAt - a.dur * 0.12); for (let i = 0; i < 2; i++) { p.x += Math.sin(p.rot) * v * dt / 2; p.z += Math.cos(p.rot) * v * dt / 2; collide(p); } }   // the leap: up to 8 metres onto the aim point
       if (!a.done && a.t >= a.hitAt) { a.done = true; plResolve(); } if (a.heavy === 'spin' && a.done && a.n === 0 && a.t >= a.dur * 0.82) { a.n = 1; plResolve(); }
       p.sp = 0; if (a.t >= a.dur) { p.act = null; if (!a.heavy && atkDown && p.atkHeld > 0.3 && !p.heavyUsed) startHeavy(); } }
