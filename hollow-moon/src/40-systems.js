@@ -157,7 +157,8 @@ function useCons(k) {
       else { S.flags.hblood = 1; S.flags.hbloodT = 1440; toast(S.species === 'werewolf' ? "It mends everything. For a day, a wolf who dies with this in them does not stay dead: they wake needing the doppelgänger's blood." : 'It mends everything. Do not die before this time tomorrow unless you mean it.'); diary('hblood'); codex('hblood'); }
       S.cons[k]--; recalc(); qEvent('use', k); if (!(S.cons.hblood > 0) && !S.flags.bloodTo) { S.flags.bloodTo = 'self'; qEvent('flag', 'blood'); } return true; }
     case 'dblood': if (tr && tr.to === 'hybrid') return askTurn(k, "Elise Gilroy's blood. Drink it and you are a hybrid: wolf and vampire both, and sired to Corvin until you break it. There is no going back."); return false;
-    case 'cure': if (tr) { toast('There is nothing to cure yet. You are not one of them until you feed.'); return false; } if (!vamp) { toast('It would do nothing to you. It is for the dead.'); return false; } S.cons[k]--; cureVampire(); return true;
+    case 'cure': if (tr) { toast('There is nothing to cure yet. You are not one of them until you feed.'); return false; } if (!vamp) { toast('It would do nothing to you. It is for the dead.'); return false; } if (RT.menu) closeMenu();
+      say([['', `The Cure. One dose. Drink it and you are ${isHybrid() ? 'a werewolf again, and only that' : 'human again'}, for good: everything the dead can do goes with it, and no blood will ever turn you after this.`]], [['Drink it.', () => { if (!(S.cons.cure > 0) || !isVamp() || RT.blk) return; S.cons.cure--; cureVampire(); }], ['Not yet.', () => { }]]); return true;
     default: return false;
   } S.cons[k]--; qEvent('use', k); return true;
 }

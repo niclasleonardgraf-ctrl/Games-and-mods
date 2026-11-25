@@ -69,7 +69,7 @@ addEventListener('resize', resize);
 const K = {}, J = { x: 0, y: 0, id: null, ox: 0, oy: 0 }, mouse = { x: 0, y: 0, l: false, r: false, lt: 0, wx: 0, wz: 0, used: false };
 const keyHandlers = [];           // fn(key) -> true if consumed
 function press(k) { for (const h of keyHandlers) if (h(k)) return; }
-addEventListener('keydown', e => { if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return; const k = e.key.length === 1 ? e.key.toLowerCase() : e.key.toLowerCase(); if ([' ', 'tab', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault(); if (!K[k]) { K[k] = true; press(k); } });
+addEventListener('keydown', e => { if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return; const k = e.key.length === 1 ? e.key.toLowerCase() : e.key.toLowerCase(); if ([' ', 'tab', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault(); if (e.repeat) { K[k] = true; return; } if (!K[k]) { K[k] = true; press(k); } });
 addEventListener('keyup', e => { K[e.key.toLowerCase()] = false; });
 addEventListener('blur', () => { for (const k in K) K[k] = false; mouse.l = mouse.r = false; });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
@@ -1637,7 +1637,7 @@ function updCam(dt, snap) {
   if (!RT.touch && mouse.used && !RT.paused) { lx += clamp((mouse.wx - pl.x) * 0.13, -3.5, 3.5); lz += clamp((mouse.wz - pl.z) * 0.13, -3, 3); } if (RT.boss && !RT.boss.dead && d2(RT.boss, pl) < 26) { lx = lerp(lx, RT.boss.x, 0.22); lz = lerp(lz, RT.boss.z, 0.22); }
   camT.set(lx, (tall ? 24.5 : 23.5) * z, lz + (tall ? 15 : 15.5) * z);
   if (snap) { cam.position.copy(camT); look.set(lx, 1, lz); } else { cam.position.lerp(camT, 1 - Math.exp(-dt * 6)); look.lerp(v3.set(lx, 1, lz), 1 - Math.exp(-dt * 8)); }
-  RT.shake = Math.max(0, RT.shake - dt * 1.8); cam.position.x += (Math.random() - 0.5) * RT.shake; cam.position.y += (Math.random() - 0.5) * RT.shake; cam.lookAt(look); cam.updateMatrixWorld();
+  RT.shake = Math.max(0, Math.min(1.5, RT.shake) - dt * 1.8); cam.position.x += (Math.random() - 0.5) * RT.shake; cam.position.y += (Math.random() - 0.5) * RT.shake; cam.lookAt(look); cam.updateMatrixWorld();
   if (RT.area.id === 'world' && !isNight()) { const an = (S.clock - 6) / 14 * PI; sun.position.set(pl.x + Math.cos(an) * 42, 24 + Math.sin(an) * 34, pl.z - 20); } else sun.position.set(pl.x - 26, 48, pl.z - 20); sun.target.position.set(pl.x, 0, pl.z); aura.position.set(pl.x, 2.4, pl.z + 0.5);
   for (const b of RT.area.fade) { const hide = pl.z < b.z + b.d / 2 && pl.z > b.z - b.d / 2 - 10 && Math.abs(pl.x - b.x) < b.w / 2 + 2.5, a = lerp(b.a, hide ? 0.2 : 1, Math.min(1, dt * 8));
     if (Math.abs(a - b.a) > 0.001 || (hide && b.a === 1)) { const tr = a < 0.99; b.o.traverse(m => { if (m.isMesh) { if (m.material.transparent !== tr) { m.material.transparent = tr; m.material.needsUpdate = true; } m.material.opacity = a; m.castShadow = !hide; } }); b.a = a > 0.995 ? 1 : a; } }
@@ -1802,7 +1802,8 @@ function useCons(k) {
       else { S.flags.hblood = 1; S.flags.hbloodT = 1440; toast(S.species === 'werewolf' ? "It mends everything. For a day, a wolf who dies with this in them does not stay dead: they wake needing the doppelgänger's blood." : 'It mends everything. Do not die before this time tomorrow unless you mean it.'); diary('hblood'); codex('hblood'); }
       S.cons[k]--; recalc(); qEvent('use', k); if (!(S.cons.hblood > 0) && !S.flags.bloodTo) { S.flags.bloodTo = 'self'; qEvent('flag', 'blood'); } return true; }
     case 'dblood': if (tr && tr.to === 'hybrid') return askTurn(k, "Elise Gilroy's blood. Drink it and you are a hybrid: wolf and vampire both, and sired to Corvin until you break it. There is no going back."); return false;
-    case 'cure': if (tr) { toast('There is nothing to cure yet. You are not one of them until you feed.'); return false; } if (!vamp) { toast('It would do nothing to you. It is for the dead.'); return false; } S.cons[k]--; cureVampire(); return true;
+    case 'cure': if (tr) { toast('There is nothing to cure yet. You are not one of them until you feed.'); return false; } if (!vamp) { toast('It would do nothing to you. It is for the dead.'); return false; } if (RT.menu) closeMenu();
+      say([['', `The Cure. One dose. Drink it and you are ${isHybrid() ? 'a werewolf again, and only that' : 'human again'}, for good: everything the dead can do goes with it, and no blood will ever turn you after this.`]], [['Drink it.', () => { if (!(S.cons.cure > 0) || !isVamp() || RT.blk) return; S.cons.cure--; cureVampire(); }], ['Not yet.', () => { }]]); return true;
     default: return false;
   } S.cons[k]--; qEvent('use', k); return true;
 }
@@ -2929,7 +2930,7 @@ function boot() {
 addEventListener('visibilitychange', () => { if (document.hidden && RT.started) save(true); });
 try { if (window.claude && window.claude.hot && window.claude.hot.snapshot) window.claude.hot.snapshot(() => { if (RT.started) save(true); return {}; }); } catch (e) { }
 /* debug and test handle. The species calls are wrapped so that a missing one fails when it is called, not when the page loads. */
-window.HM = { get S() { return S; }, get pl() { return pl; }, get P() { return P; }, get RT() { return RT; }, actors, press, K, spawnEnemy, enterArea, genItem, addItem, gainXp, startQuest, qEvent, mkUniq, recalc, save, hit, drops, get area() { return RT.area; }, get info() { return ren.info.render; },
+window.HM = { get S() { return S; }, get pl() { return pl; }, get P() { return P; }, get RT() { return RT; }, actors, press, K, spawnEnemy, enterArea, genItem, addItem, gainXp, startQuest, qEvent, mkUniq, recalc, save, hit, drops, get area() { return RT.area; }, get info() { return ren.info.render; }, get cam() { return cam; }, get scene() { return scene; },
   get dq() { return dq; }, get prompt() { return curInt; }, get origin() { return S.origin; }, get species() { return S.species; }, get kind() { return kindName(); }, get wolf() { return !!(pl && pl.wolf); }, get status() { return pl ? hudStatus() : []; }, get originSel() { return originSel; }, set originSel(v) { if (ORIGINS[v]) { originSel = v; originCards(); } },
   begin: (fresh, data) => begin(fresh, data), newGame: (look, origin) => newGame(look, origin), findInteract: () => findInteract(), openMenu: t => openMenu(t), closeMenu: () => closeMenu(), say: (l, c, d) => say(l, c, d),
   setForm: (wolf, willing) => setForm(wolf, willing), toggleShift: () => toggleShift(), canShift: () => canShift(), triggerCurse: () => triggerCurse(), beginTransition: (to, how) => beginTransition(to, how), completeTransition: () => completeTransition(), failTransition: why => failTransition(why),

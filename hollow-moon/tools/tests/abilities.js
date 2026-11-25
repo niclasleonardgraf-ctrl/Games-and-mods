@@ -8,6 +8,8 @@ const HELP = () => { window.T_ = {
   foe(type, dx = 2, dz = 0, o = {}) { const e = HM.spawnEnemy(type, HM.pl.x + dx, HM.pl.z + dz, o.lvl || HM.S.lvl, Object.assign({ awake: 1 }, o)); e.fx.stun = o.free ? 0 : 600; e.rot = -Math.PI / 2; return e; },
   cast(id, r) { HM.S.skills[id] = r || HM.S.skills[id] || 1; HM.S.bar[0] = id; HM.castSkill(0); return HM.pl.cds[id] > 0; },
   pct: e => +(e.hp / e.maxHp).toFixed(3),
+  /* someone whose only move is to catch the player's eye */
+  gazer(type) { T_.reset(); const e = T_.foe(type, 4, 0, { free: 1 }); for (const n of e.def.atk) if (n !== 'gaze') e.ai.cd[n] = 1e6; e.ai.aggro = e.ai.provoked = true; e.ai.gcd = 0; HM.pl.inv = 0; window.G = e; return e; },
 }; };
 const prep = async (h, o = {}) => { await h.ev(HELP); await h.ev(o => { HM.S.clock = o.clock || 22; HM.gainXp(40000); HM.S.sp = 0; HM.pl.inv = 1e6; T_.reset(); }, o); await h.unpaused(); await h.square(); };
 
@@ -35,7 +37,12 @@ async function hunter(b) {
   ok('h_volley: a fan of bolts reaches a target seven metres off', s && await ev(() => A.hp < 1e7));
   r = await ev(() => { T_.reset(); const v = T_.foe('feral', 6, 0, { free: 1 }), w = T_.foe('packrunner', 6, 2, { free: 1 }), p = T_.foe('robber', 6, -2, { free: 1 }), o = T_.foe('casimir', 9, 0, { free: 1 }); const c = T_.cast('h_device'); return { c, v: v.fx.stun, w: w.fx.stun, p: p.fx.stun || 0, o: o.fx.stun, me: HM.pl.fx.stun || 0 }; });
   ok("h_device: drops vampires and werewolves, an Original for less; people hear nothing, and a human winding it is fine", r.c && r.v >= 5 && r.w >= 5 && r.p === 0 && r.o > 0 && r.o < r.v && r.me === 0, r);
-  r = await ev(() => { T_.reset(); HM.S.eq.weapon = HM.genItem(HM.S.lvl, { base: 'staff', rar: 1 }); HM.recalc(); const o = { cls: HM.P.wcls, mat: HM.P.wmat }; HM.S.eq.weapon = HM.genItem(HM.S.lvl, { base: 'bat', rar: 1 }); HM.recalc(); return o; });
+  const MET = () => { HM.pl.rot = Math.atan2(G.x - HM.pl.x, G.z - HM.pl.z); HM.pl.hp = HM.P.maxHp; return HM.pl.fx.charm > 0 || G.ai.noGaze === true; };
+  await ev(() => { T_.gazer('elder'); }); await h.until(MET, null, 60000); r = await ev(() => ({ charm: HM.pl.fx.charm > 0, by: HM.pl.charmBy === G, resisted: !!G.ai.noGaze, status: HM.status }));
+  ok('compulsion: a vampire who catches a living person\'s eye compels them', r.charm && r.by && !r.resisted && r.status.includes('Compelled'), r);
+  await ev(() => { HM.addCons('coffee', 1, true); HM.useCons('coffee'); T_.gazer('elder'); }); await h.until(MET, null, 60000); r = await ev(() => ({ charm: HM.pl.fx.charm > 0, resisted: !!G.ai.noGaze, immune: HM.immuneCompel(true) }));
+  ok('compulsion: vervain coffee stops it, and the vampire stops trying', !r.charm && r.resisted && r.immune, r); await ev(() => { HM.S.flags.vervUntil = 0; });
+  r = await ev(() => { T_.reset(); HM.S.eq.weapon = HM.genItem(HM.S.lvl, { base: 'staff', rar: 1 }); HM.recalc(); const o = { cls: HM.P.wcls, mat: HM.P.wmat }; HM.S.eq.weapon = HM.genItem(HM.S.lvl, { base: 'bat', rar: 0 }); HM.S.eq.ranged = null; HM.recalc(); return o; });
   ok('a staff in hands with no magic is only a stick', r.cls === 'med' && r.mat === 'wood', r);
   r = await ev(() => { T_.reset(); HM.S.skills = {}; HM.S.sp = 40; for (let i = 0; i < 5; i++) { HM.learn('h_weapon'); HM.learn('h_marks'); HM.learn('h_cond'); HM.learn('h_slayer'); } for (let i = 0; i < 3; i++) { HM.learn('h_parry'); HM.learn('h_second'); } for (let i = 0; i < 5; i++) HM.learn('h_slayer'); const pts = HM.treePts('hunter'); HM.learn('h_five'); const o = { pts, five: HM.S.skills.h_five || 0, immune: HM.immuneCompel(true), vsV: HM.P.vsV };
     const e = T_.foe('feral', 2, 0); HM.hit(HM.pl, e, { dmg: 1e9, mat: 'wood' }); o.mark = HM.S.flags.mark; HM.S.flags.mark = 60; HM.recalc(); o.vsV60 = HM.P.vsV; HM.S.flags.mark = 500; HM.recalc(); o.cap = HM.P.vsV; return o; });
@@ -71,6 +78,11 @@ async function vampire(b) {
   ok('v_heart: tears the heart from anything down that can die, a hybrid included; never an Original', r.downed && r.hybrid && r.healthy && r.original, r);
   r = await ev(() => { T_.reset(); T_.foe('feral', 6, 0, { free: 1 }); const c = T_.cast('h_device'); return { c, me: HM.pl.fx.stun }; });
   ok('h_device: wound by a vampire, it drops the vampire holding it too', r.c && r.me >= 5, r);
+  const MET = () => { HM.pl.rot = Math.atan2(G.x - HM.pl.x, G.z - HM.pl.z); HM.pl.hp = HM.P.maxHp; return HM.pl.fx.charm > 0 || G.ai.noGaze === true; };
+  await ev(() => { T_.gazer('elder'); }); await h.until(MET, null, 60000); r = await ev(() => ({ charm: HM.pl.fx.charm > 0, resisted: !!G.ai.noGaze }));
+  ok('compulsion: one vampire cannot compel another', !r.charm && r.resisted, r);
+  await ev(() => { T_.gazer('casimir'); }); await h.until(MET, null, 60000); r = await ev(() => ({ charm: HM.pl.fx.charm > 0, resisted: !!G.ai.noGaze }));
+  ok('compulsion: an Original can compel a vampire', r.charm && !r.resisted, r);
   /* a deer, by way of the Use prompt */
   r = await ev(() => { T_.reset(); HM.pl.blood = 10; const d = T_.foe('deer', 1.5, 0); const it = HM.actorInteract(d, 1.5); const label = it && it.label; if (it) it.act(); return { label, dead: d.dead, blood: Math.round(HM.pl.blood), diet: HM.S.diet }; });
   ok('feeding: E on a deer drinks it dry: 15 blood, and the animal diet', /animal blood/.test(r.label || '') && r.dead && r.blood === 25 && r.diet === 'animal', r);
@@ -201,6 +213,8 @@ async function town(b) {
   r = await ev(() => { HM.pl.x = -38.4; HM.pl.z = -7; const it = HM.findInteract(); return { invited: HM.S.flags.invited, label: it && it.label }; }); ok('invitation: asked in once, the room is theirs again', r.invited === 1 && /rest/.test(r.label || ''), r);
   /* the Cure */
   await h.square(); await ev(() => { HM.addCons('cure', 1, true); window.SP0 = HM.S.sp; }); await p.keyboard.press('Tab'); await h.until(() => !!HM.RT.menu, null, 5000); await ev(() => { document.querySelector('[data-tab="inv"]').click(); document.querySelector('[data-cons="cure"]').click(); });
+  ok('the Cure: it asks before it is drunk, and can be put back', (await h.until(() => !HM.RT.menu && !!HM.dq, null, 5000)) && (await h.choose('Not yet.')) && await ev(() => HM.S.species === 'vampire' && HM.S.cons.cure === 1));
+  await ev(() => { HM.useCons('cure'); }); await h.choose('Drink it.');
   ok('the Cure: taken from the pack', await h.until(() => !HM.RT.blk && HM.S.species === 'human' && !!HM.S.flags.cured, null, 30000));
   r = await ev(() => ({ species: HM.S.species, cured: HM.S.flags.cured, sp: HM.S.sp - SP0, v: Object.keys(HM.S.skills).filter(k => k[0] === 'v'), tree: HM.treeOpen('vampire'), sire: HM.S.sire, left: HM.S.cons.cure || 0 }));
   ok('the Cure: human again, the vampire\'s skills refunded', r.species === 'human' && r.cured === 1 && r.sp === 2 && r.v.length === 0 && !r.tree && r.sire === null && r.left === 0, r);

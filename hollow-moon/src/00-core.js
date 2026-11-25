@@ -67,7 +67,7 @@ addEventListener('resize', resize);
 const K = {}, J = { x: 0, y: 0, id: null, ox: 0, oy: 0 }, mouse = { x: 0, y: 0, l: false, r: false, lt: 0, wx: 0, wz: 0, used: false };
 const keyHandlers = [];           // fn(key) -> true if consumed
 function press(k) { for (const h of keyHandlers) if (h(k)) return; }
-addEventListener('keydown', e => { if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return; const k = e.key.length === 1 ? e.key.toLowerCase() : e.key.toLowerCase(); if ([' ', 'tab', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault(); if (!K[k]) { K[k] = true; press(k); } });
+addEventListener('keydown', e => { if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return; const k = e.key.length === 1 ? e.key.toLowerCase() : e.key.toLowerCase(); if ([' ', 'tab', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) e.preventDefault(); if (e.repeat) { K[k] = true; return; } if (!K[k]) { K[k] = true; press(k); } });
 addEventListener('keyup', e => { K[e.key.toLowerCase()] = false; });
 addEventListener('blur', () => { for (const k in K) K[k] = false; mouse.l = mouse.r = false; });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
