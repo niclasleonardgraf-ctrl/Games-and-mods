@@ -1166,6 +1166,35 @@ for sx in (-1, 1):
 b.box((1.0, 0.1, 0.7), (-1.5, -1.47, 0.7), MOSS, skip='b', top=(0.5, 1))
 b.done()
 
+_rs = random.getstate()  # keep every later model's jitter as it was before this one was added
+b = B('cellar')  # old root cellar dug into a bank: mossy mound, stone face with a barred iron door, wing walls, hanging chains
+b.ico(3.1, (0, 1.9, -0.25), MOSS, 1, (1.0, 1.2, 0.62), 0.22)
+b.ico(1.5, (-2.1, 0.9, -0.2), MOSS, 1, (1.0, 1.0, 0.6), 0.15)
+b.box((4.8, 0.6, 2.35), (0, -0.9, 1.175), STONE, skip='b', top=(0.94, 1))
+b.box((5.0, 0.72, 0.22), (0, -0.9, 2.46), STONE_D)
+b.box((1.5, 0.1, 1.95), (0, -1.21, 0.975), VOID, skip='bk')
+b.box((2.1, 0.74, 0.34), (0, -0.93, 2.1), STONE_D)
+for sx in (-1, 1):
+    b.box((0.3, 0.74, 1.95), (sx * 0.9, -0.93, 0.975), STONE_D, skip='b')
+    b.box((0.5, 2.7, 1.5), (sx * 1.75, -2.5, 0.75), STONE, skip='b', top=(0.8, 1, 0, 0), rot=(0, 0, sx * 0.16))
+    b.box((0.62, 2.8, 0.14), (sx * 1.75, -2.5, 1.55), STONE_D, rot=(0, 0, sx * 0.16))
+    b.box((0.5, 0.5, 0.5), (sx * 2.05, -4.0, 0.25), STONE_D, skip='b', rot=(0, 0, 0.4))
+    b.cyl(0.07, 0.07, 0.05, (sx * 1.25, -1.24, 1.75), IRON, 6, rot=(PI / 2, 0, 0))
+    chain = [(sx * 1.25, -1.28, 1.72), (sx * 1.28, -1.34, 1.3), (sx * 1.2, -1.4, 0.85), (sx * 1.3, -1.5, 0.4), (sx * 1.05, -1.75, 0.06), (sx * 0.8, -2.2, 0.05)]
+    b.tube(chain, [0.035] * len(chain), IRON, 4)
+    b.box((0.16, 0.2, 0.1), (sx * 0.8, -2.28, 0.06), IRON, skip='b')
+for i in range(6):
+    b.box((0.05, 0.05, 1.9), (-0.55 + 0.22 * i, -1.27, 0.95), IRON, skip='tb')
+for z in (0.45, 1.5):
+    b.box((1.46, 0.05, 0.06), (0, -1.28, z), IRON, skip='lr')
+b.box((0.16, 0.08, 0.22), (0.3, -1.31, 1.0), IRON)
+for i, (w, y) in enumerate(((2.9, -1.75), (2.7, -2.5), (2.5, -3.25))):
+    b.box((w, 0.72, 0.1 - 0.02 * i), (0, y, 0.05 - 0.01 * i), STONE_D, skip='b')
+b.box((0.9, 0.5, 0.3), (-1.9, -0.6, 2.72), MOSS, skip='b', top=(0.6, 0.7))
+b.box((1.3, 0.12, 0.6), (1.5, -1.22, 0.55), MOSS, skip='b', top=(0.5, 1))
+b.done()
+random.setstate(_rs)
+
 # ---- gazebo: 6 x 6 open octagonal bandstand ----
 b = B('gazebo')
 b.loft([(0, 2.95, 2.95), (0.25, 2.95, 2.95)], STONE, 8, caps='')

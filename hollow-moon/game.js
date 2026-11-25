@@ -2194,7 +2194,7 @@ const CODEX = {
   cure: { t: 'The Cure', x: "One dose, made two thousand years ago by a witch to undo immortality, and sealed in with a desiccated immortal. It makes a vampire human for good, and it can be given to someone else. Whoever has taken it can never be turned again." },
   fring: { t: "The Founder's Ring", x: "Spelled in 1864 for the founding families. If something supernatural kills the wearer, the wearer wakes up. It works only for an ordinary human: not a witch, a wolf, one of the Five or the dead, and not against an ordinary death. Every return keeps a piece of you." },
   tomb: { t: "The tomb under Fell's Church", x: "In 1864 the Council meant to burn twenty-seven vampires in the church. Emeline Thorne sealed them alive in the tomb beneath it instead, under a comet. They dried out and are still there, and spilled blood wakes them. The floors below are older, and were a prison for one man." },
-  cellar: { t: 'The Lockwood cellar', x: "West of the Falls den there is a low stone house with steps going down to a cellar, and chains in the wall. A werewolf who locks in before moonrise spends the night as a wolf behind a door and hurts nobody." },
+  cellar: { t: 'The Lockwood cellar', x: "West of the Falls den there is an iron door set into a mossy bank, with steps going down to a cellar behind it, and chains in the wall. A werewolf who locks in before moonrise spends the night as a wolf behind a door and hurts nobody." },
 };
 function jot(...ids) { S.codex = S.codex || {}; const t = []; for (const id of ids) if (CODEX[id] && !S.codex[id]) { S.codex[id] = 1; t.push(CODEX[id].t); } if (t.length) toast('Codex: ' + t.join(' · ')); return t.length; }
 
@@ -2428,7 +2428,7 @@ function hollowAltar() {
 }
 function lockwoodCellar() {
   jot('cellar'); const head = 'The Lockwood cellar';
-  if (S.species !== 'werewolf') return say([[head, 'A low stone house with LOCKWOOD cut into the lintel. Inside, steps go down. Chains are bolted into the far wall, and the inside of the door is scored, top to bottom, by something with claws.'], ['', isHybrid() ? 'You choose when you change. The chains are for those who cannot.' : S.origin === 'wolf' && !isVamp() ? 'They are not for you. Not unless the thing asleep in your blood wakes up.' : isVamp() ? 'It smells of wolf. Every instinct you have says to be somewhere else when the moon is full.' : 'Whoever uses this place comes here on purpose, once a month, and locks the door from the inside.']]);
+  if (S.species !== 'werewolf') return say([[head, 'An iron door set into the bank, with LOCKWOOD cut into the lintel. Behind it, steps go down. Chains are bolted into the far wall, and the inside of the door is scored, top to bottom, by something with claws.'], ['', isHybrid() ? 'You choose when you change. The chains are for those who cannot.' : S.origin === 'wolf' && !isVamp() ? 'They are not for you. Not unless the thing asleep in your blood wakes up.' : isVamp() ? 'It smells of wolf. Every instinct you have says to be somewhere else when the moon is full.' : 'Whoever uses this place comes here on purpose, once a month, and locks the door from the inside.']]);
   const ring = hasUniq('moonring'), tonight = fullTonight();
   say([[head, 'Steps down under the Lockwood lintel. Chains bolted into the stone, and a door scored from the inside. Lock yourself in before moonrise and the wolf spends the night behind it.'], ['', ring ? 'The ring keeps the moon off you. You do not need the chains while you wear it.' : tonight ? 'The moon is full tonight. Lock the chains now and you wake here at dawn, and nobody is hurt.' : 'The moon is not full tonight. Come back on the day it is, before dark.']], tonight && !ring ? [['Lock the chains.', () => chainUp()], ['Not yet.', () => { }]] : null);
 }
@@ -2619,8 +2619,8 @@ function spawnWorldNpcs() {
   const W = [[-22, -22], [22, -20], [-22, 20], [20, 22], [-8, 10], [10, -10], [0, 40], [0, 70], [0, 100], [-34, 8], [30, -14], [12, -44], [-4, -20], [24, 4]];
   for (let i = 0; i < 12; i++) { const w = W[i]; spawnNpc({ n: 'Townsperson', x: w[0], z: w[1], wps: W, townie: 1, owl: i < 3 }); }
   for (const d of [[-60, 16, [[-60, 16], [-30, 8], [-88, 30]]], [50, -14, [[50, -14], [30, -14], [80, -14]]]]) spawnNpc({ n: 'Deputy', x: d[0], z: d[1], wps: d[2], look: { cloth: 0x2a3a5c, hat: 1, pants: 0x1a1c26, long: 0 } });
-  /* story props, built once: the old bridge sign, and the stone house over the Lockwood cellar, west of the Falls den */
-  if (!a.storyProps) { a.storyProps = { sign: place('board', 193.2, -36.2, 0, 0.5), cellar: place('crypt', 159.5, -214, 0, 0.8), torch: place('torch', 162.6, -211, 0, 1) }; if (a.boxes && a.los && a.hash && typeof hashArea === 'function') { const box = [157.5, -216.4, 161.5, -211.6]; a.boxes.push(box); a.los.push(box); hashArea(a); } }
+  /* story props, built once: the old bridge sign, and the door of the Lockwood cellar, set into a bank west of the Falls den */
+  if (!a.storyProps) { a.storyProps = { sign: place('board', 193.2, -36.2, 0, 0.5), cellar: place('cellar', 159.5, -214, 0, 0.8), torch: place('torch', 162.6, -211, 0, 1) }; if (a.boxes && a.los && a.hash && typeof hashArea === 'function') { for (const box of [[157.4, -218, 161.6, -213.1], [157.7, -213.1, 158.5, -210.9], [160.5, -213.1, 161.3, -210.9]]) { a.boxes.push(box); a.los.push(box); } hashArea(a); } }
   storySync();
   addInter({ temp: 1, x: -20, z: -245, r: 2.8, label: () => 'Touch the altar', act: hollowAltar });
   addInter({ temp: 1, x: 8.5, z: -29.2, r: 2.4, label: () => S.done.q_bump ? 'Read the notice board' : null, act: () => openMenu('bounty') });
