@@ -177,6 +177,8 @@ function venomOn(e, dps, t) {   // slow death to an ordinary vampire (dps a seco
 }
 /* nothing closes while vervain or werewolf venom is in a vampire's blood */
 const noMend = () => isVamp() && (pl.fx.verv > 0 || (!isHybrid() && !S.original && (S.venomUntil || 0) > absHours()));
+/* a werewolf bite on an ordinary vampire: nothing heals at all (draught, blood bag, feeding, a blood font) until Corvin's blood or a Heretic's siphoning lifts it. An Original only has a fever, a hybrid nothing. */
+const venomed = () => isVamp() && !isHybrid() && !S.original && (S.venomUntil || 0) > absHours();
 /* at zero health: who dies, who only drops, who is spared */
 function fall(e, src, o) {
   const ours = src === pl || !src || src.team === 0;
@@ -252,7 +254,7 @@ function hitPlayer(src, o) {
   const sw = sk('h_second'); if (sw && pl.hp > 0 && pl.hp < P.maxHp * 0.3 && pl.buff.second <= 0) { pl.buff.second = 90; heal(P.maxHp * (0.1 + 0.1 * sw)); floatText(pl.x, 3, pl.z, 'SECOND WIND', '#9effa0', 16); }
   if (pl.hp <= 0) playerDeath(src, o); return d;
 }
-function heal(n, quiet) { if (pl.dead || (pl.fx.lodged > 0 && isVamp())) return; const b = pl.hp; pl.hp = Math.min(P.maxHp, pl.hp + n); if (!quiet && pl.hp - b > 1) { floatText(pl.x, 2.6, pl.z, '+' + fmt(pl.hp - b), '#7dff8a', 15); puff(pl.x, 1, pl.z, 8, { c: GREEN, add: 0.9, sp: 1, up: 2.5, life: 0.7, size: 0.18, grav: -1 }); } }
+function heal(n, quiet) { if (pl.dead || (pl.fx.lodged > 0 && isVamp()) || venomed()) return; const b = pl.hp; pl.hp = Math.min(P.maxHp, pl.hp + n); if (!quiet && pl.hp - b > 1) { floatText(pl.x, 2.6, pl.z, '+' + fmt(pl.hp - b), '#7dff8a', 15); puff(pl.x, 1, pl.z, 8, { c: GREEN, add: 0.9, sp: 1, up: 2.5, life: 0.7, size: 0.18, grav: -1 }); } }
 function addFx(a, k, t, v) { if (a.dead || (a !== pl && lying(a) && k !== 'venom' && k !== 'burn')) return; if (a === pl && k === 'stun' && pl.buff.fury > 0) return; if (k === 'stun' && a.def) { if (a.def.boss) t *= 0.4; else if (isOrig(a)) t *= 0.6; } a.fx[k] = Math.max(a.fx[k] || 0, t); if (v != null) a.fx[k + 'D'] = Math.max(a.fx[k + 'D'] || 0, v); }
 function stagger(e, t) { if (e.dead || lying(e)) return; e.poise = e.maxPoise; e.fx.stun = Math.max(e.fx.stun || 0, t); if (e.ai && e.ai.cur) { dropAtk(e); e.sw = null; e.y = 0; } floatText(e.x, 2.8, e.z, 'STAGGERED', '#ffe9a0', 14); puff(e.x, 2, e.z, 8, { c: SPARK, add: 1, sp: 2, life: 0.4, size: 0.14, grav: 0 }); }
 function aggro(e, prov) { if (e.def.peaceful || e.ai.aggro) return; e.ai.aggro = true; e.ai.gcd = Math.max(e.ai.gcd, 0.35); if (e.def.boss && e.team === 1) { RT.boss = e; showBoss(e); sfx('growl'); } for (const o of actors) if (o.kind === 'enemy' && o !== e && !o.dead && !lying(o) && o.team === e.team && !o.def.peaceful && d2(o, e) < 13) { if (prov && o.fam === e.fam) o.ai.provoked = true; if (!o.ai.aggro) { o.ai.aggro = true; o.ai.gcd = R(0.3, 0.9); } } }   // strike one of a pack, or one of the Council's men, and the rest of them take it personally

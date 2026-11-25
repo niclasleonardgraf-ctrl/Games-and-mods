@@ -137,11 +137,11 @@ function useCons(k) {
   if (!(S.cons[k] > 0) || !CONS[k] || !pl || pl.dead) return false; if (pl.wolf) { toast('Not with paws.'); return false; }
   const vamp = isVamp(), tr = S.transition, herb = 1 + 0.15 * (canMagic() ? sk('w_herb') : 0), scald = (f, line) => { pl.hp = Math.max(1, pl.hp - P.maxHp * 0.1); pl.fx[f] = Math.max(pl.fx[f] || 0, 8); sfx('hurt'); toast(line); recalc(); };
   switch (k) {
-    case 'draught': if (pl.hp >= P.maxHp || pl.healCd > 0) return false; if (vamp && pl.fx.lodged > 0) { toast('Nothing closes while the wood is still in you. Pull it out first.'); return false; } heal(P.maxHp * 0.4 * herb); pl.healCd = 6; sfx('heal'); break;
+    case 'draught': if (pl.hp >= P.maxHp || pl.healCd > 0) return false; if (vamp && pl.fx.lodged > 0) { toast('Nothing closes while the wood is still in you. Pull it out first.'); return false; } if (venomed()) { toast("Nothing heals while the venom is in you. Only Corvin's blood lifts it."); return false; } heal(P.maxHp * 0.4 * herb); pl.healCd = 6; sfx('heal'); break;
     case 'tonic': if (S.origin === 'siphoner') { toast('There is nothing in you for it to wake. You have to take magic from something that has it.'); return false; } if (pl.foc >= P.maxFoc) return false; pl.foc = Math.min(P.maxFoc, pl.foc + P.maxFoc * 0.6 * herb); sfx('heal'); break;
     case 'bloodbag':
       if (tr) { if (tr.to === 'hybrid') { sfx('bite'); toast("You drink it and nothing changes. Only the doppelgänger's blood will finish this."); break; } return askTurn(k, 'Human blood. Drink it and you are a vampire, for good: the sun, the hunger, all of it. Leave it and the day runs out, and you die the ordinary way.'); }
-      if (!vamp) { toast('You could not stomach that. Not yet.'); return false; } pl.blood = Math.min(P.maxBlood, pl.blood + 50); S.diet = 'human'; pl.dryT = 0; heal(P.maxHp * 0.25); pl.healCd = 4; sfx('bite'); recalc(); break;
+      if (!vamp) { toast('You could not stomach that. Not yet.'); return false; } pl.blood = Math.min(P.maxBlood, pl.blood + 50); S.diet = 'human'; pl.dryT = 0; if (venomed()) toast('It feeds you. It closes nothing while the venom is in you.'); heal(P.maxHp * 0.25); pl.healCd = 4; sfx('bite'); recalc(); break;
     case 'burger': sfx('ui'); if (vamp) { toast('It is fine. It is just not what you want.'); break; } pl.buff.burger = 60; toast('Marnie makes a good burger.'); break;
     case 'bourbon': sfx('ui'); if (vamp) { S.flags.bourbonT = absHours() + 3; toast('It takes the edge off. For a while you can think about something other than throats.'); recalc(); } else toast(tr ? 'It dulls the ache in your gums. Not for long.' : 'It burns going down, and that is all it does.'); break;
     case 'coffee': if (vamp) { scald('verv', 'Vervain. It burns all the way down and leaves you weak.'); break; } S.flags.vervUntil = absHours() + 24; sfx('ui'); toast('Bitter as weeds. Nobody gets inside your head for a day.'); codex('vervain'); break;
@@ -153,7 +153,7 @@ function useCons(k) {
       if (S.flags.cured) toast('It mends you, and that is all it will ever do. The Cure does not let go.'); else if (S.species === 'werewolf') toast('It mends you. Ordinary vampire blood cannot turn a werewolf, whatever happens tonight.');
       else { S.flags.vblood = 1; S.flags.vbloodT = 1440; toast('It mends everything, and it stays in you until this time tomorrow. Die before then and you will wake in transition.'); diary('vblood'); codex('vblood'); } break;
     case 'hblood': {
-      if (tr) { toast('More of that will not help now.'); return false; } const bitten = S.venomUntil > 0; heal(P.maxHp); sfx('bite'); if (bitten) cureVenom('blood');
+      if (tr) { toast('More of that will not help now.'); return false; } const bitten = S.venomUntil > 0; sfx('bite'); if (bitten) cureVenom('blood'); heal(P.maxHp);   /* the venom goes first: nothing heals while it is in the blood */
       if (vamp) { pl.blood = P.maxBlood; pl.dryT = 0; if (!bitten) toast('A thousand years in a mouthful. It heals you, and it can do nothing else for the dead.'); }
       else if (S.flags.cured) toast('It mends you, and that is all it will ever do. The Cure does not let go.');
       else { S.flags.hblood = 1; S.flags.hbloodT = 1440; toast(S.species === 'werewolf' ? "It mends everything. For a day, a wolf who dies with this in them does not stay dead: they wake needing the doppelgänger's blood." : 'It mends everything. Do not die before this time tomorrow unless you mean it.'); diary('hblood'); codex('hblood'); }
